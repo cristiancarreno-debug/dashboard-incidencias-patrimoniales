@@ -134,22 +134,23 @@ function buildJQLQueries() {
 async function fetchWithJQL(jql) {
   const fields = 'summary,status,assignee,created,resolutiondate,customfield_10409';
   const maxResults = 100;
-  let startAt = 0;
   let allIssues = [];
-  let total = 0;
+  let nextPageToken = null;
 
   do {
     const encodedJql = encodeURIComponent(jql);
-    const url = `/rest/api/3/search/jql?jql=${encodedJql}&fields=${fields}&maxResults=${maxResults}&startAt=${startAt}`;
+    let url = `/rest/api/3/search/jql?jql=${encodedJql}&fields=${fields}&maxResults=${maxResults}`;
+    if (nextPageToken) {
+      url += `&nextPageToken=${encodeURIComponent(nextPageToken)}`;
+    }
     const response = await jiraRequest(url);
 
-    total = response.total;
     const issues = response.issues || [];
     allIssues = allIssues.concat(issues);
-    startAt += issues.length;
+    nextPageToken = response.nextPageToken || null;
 
     if (issues.length === 0) break;
-  } while (startAt < total);
+  } while (nextPageToken);
 
   return allIssues;
 }
