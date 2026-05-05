@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import type { FiltrosIncidencias, IncidenciaClasificada, Tribu, Squad, Producto } from '../types';
+import type { FiltrosIncidencias, IncidenciaClasificada } from '../types';
 
 export function useFilters(incidencias: IncidenciaClasificada[]) {
   const [filtros, setFiltros] = useState<FiltrosIncidencias>({});
@@ -7,70 +7,68 @@ export function useFilters(incidencias: IncidenciaClasificada[]) {
   // Extraer opciones únicas de los datos reales
   const todasTribus = useMemo(() => {
     const set = new Set(incidencias.map(i => i.tribu));
-    return Array.from(set).sort() as Tribu[];
+    return Array.from(set).sort();
   }, [incidencias]);
 
   const todosSquads = useMemo(() => {
     const set = new Set(incidencias.map(i => i.squad));
-    return Array.from(set).sort() as Squad[];
+    return Array.from(set).sort();
   }, [incidencias]);
 
   // Opciones filtradas por cascada
   const squadsDisponibles = useMemo(() => {
-    if (!filtros.tribu) return todosSquads;
-    const filtered = incidencias.filter(i => i.tribu === filtros.tribu);
+    if (!filtros.tribus || filtros.tribus.length === 0) return todosSquads;
+    const filtered = incidencias.filter(i => filtros.tribus!.includes(i.tribu));
     const set = new Set(filtered.map(i => i.squad));
-    return Array.from(set).sort() as Squad[];
-  }, [incidencias, filtros.tribu, todosSquads]);
+    return Array.from(set).sort();
+  }, [incidencias, filtros.tribus, todosSquads]);
 
   const productosDisponibles = useMemo(() => {
     let filtered = incidencias;
-    if (filtros.tribu) filtered = filtered.filter(i => i.tribu === filtros.tribu);
-    if (filtros.squad) filtered = filtered.filter(i => i.squad === filtros.squad);
+    if (filtros.tribus && filtros.tribus.length > 0) filtered = filtered.filter(i => filtros.tribus!.includes(i.tribu));
+    if (filtros.squads && filtros.squads.length > 0) filtered = filtered.filter(i => filtros.squads!.includes(i.squad));
     const set = new Set(filtered.map(i => i.producto));
-    return Array.from(set).sort() as Producto[];
-  }, [incidencias, filtros.tribu, filtros.squad]);
+    return Array.from(set).sort();
+  }, [incidencias, filtros.tribus, filtros.squads]);
 
   const plataformasDisponibles = useMemo(() => {
     const set = new Set(incidencias.map(i => i.plataforma));
     return Array.from(set).sort();
   }, [incidencias]);
 
-  // Aplicar filtros
+  // Aplicar filtros (multi-selección)
   const incidenciasFiltradas = useMemo(() => {
     return incidencias.filter(inc => {
-      if (filtros.tribu && inc.tribu !== filtros.tribu) return false;
-      if (filtros.squad && inc.squad !== filtros.squad) return false;
-      if (filtros.producto && inc.producto !== filtros.producto) return false;
-      if (filtros.plataforma && inc.plataforma !== filtros.plataforma) return false;
+      if (filtros.tribus && filtros.tribus.length > 0 && !filtros.tribus.includes(inc.tribu)) return false;
+      if (filtros.squads && filtros.squads.length > 0 && !filtros.squads.includes(inc.squad)) return false;
+      if (filtros.productos && filtros.productos.length > 0 && !filtros.productos.includes(inc.producto)) return false;
+      if (filtros.plataformas && filtros.plataformas.length > 0 && !filtros.plataformas.includes(inc.plataforma)) return false;
       if (filtros.fechaDesde) {
         const incDate = inc.createdDate.slice(0, 10);
-        const desde = filtros.fechaDesde.slice(0, 10);
-        if (incDate < desde) return false;
+        if (incDate < filtros.fechaDesde.slice(0, 10)) return false;
       }
       if (filtros.fechaHasta) {
         const incDate = inc.createdDate.slice(0, 10);
-        const hasta = filtros.fechaHasta.slice(0, 10);
-        if (incDate > hasta) return false;
+        if (incDate > filtros.fechaHasta.slice(0, 10)) return false;
       }
       return true;
     });
   }, [incidencias, filtros]);
 
-  const setTribu = useCallback((tribu?: Tribu) => {
-    setFiltros(prev => ({ ...prev, tribu, squad: undefined, producto: undefined }));
+  const setTribus = useCallback((tribus: string[]) => {
+    setFiltros(prev => ({ ...prev, tribus: tribus.length > 0 ? tribus : undefined, squads: undefined, productos: undefined }));
   }, []);
 
-  const setSquad = useCallback((squad?: Squad) => {
-    setFiltros(prev => ({ ...prev, squad, producto: undefined }));
+  const setSquads = useCallback((squads: string[]) => {
+    setFiltros(prev => ({ ...prev, squads: squads.length > 0 ? squads : undefined, productos: undefined }));
   }, []);
 
-  const setProducto = useCallback((producto?: Producto) => {
-    setFiltros(prev => ({ ...prev, producto }));
+  const setProductos = useCallback((productos: string[]) => {
+    setFiltros(prev => ({ ...prev, productos: productos.length > 0 ? productos : undefined }));
   }, []);
 
-  const setPlataforma = useCallback((plataforma?: string) => {
-    setFiltros(prev => ({ ...prev, plataforma }));
+  const setPlataformas = useCallback((plataformas: string[]) => {
+    setFiltros(prev => ({ ...prev, plataformas: plataformas.length > 0 ? plataformas : undefined }));
   }, []);
 
   const setFechaDesde = useCallback((fechaDesde?: string) => {
@@ -92,10 +90,10 @@ export function useFilters(incidencias: IncidenciaClasificada[]) {
     squadsDisponibles,
     productosDisponibles,
     plataformasDisponibles,
-    setTribu,
-    setSquad,
-    setProducto,
-    setPlataforma,
+    setTribus,
+    setSquads,
+    setProductos,
+    setPlataformas,
     setFechaDesde,
     setFechaHasta,
     limpiarFiltros,

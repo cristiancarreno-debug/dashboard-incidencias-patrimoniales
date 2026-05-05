@@ -317,6 +317,15 @@ async function fetchAllIncidencias() {
 /** Tribus/Squads a excluir */
 const TRIBUS_EXCLUIDAS = new Set(['ARL', 'COREX', 'Servicio', 'Operaciones y Canales', 'Operaciones', 'Canales']);
 
+/** Tribus VÁLIDAS de patrimoniales — solo estas se incluyen */
+const TRIBUS_VALIDAS = new Set(['Movilidad', 'Vivienda', 'Empresas', 'Arrendamiento']);
+
+/** Squads VÁLIDOS de patrimoniales */
+const SQUADS_VALIDOS = new Set([
+  'Movilidad', 'Hogar', 'Copropiedades', 'Decenal y Maquinaria',
+  'Pymes', 'Cumplimiento', 'Agro y Transporte', 'Arrendamiento',
+]);
+
 /** Vicepresidencias a excluir */
 const VICEPRESIDENCIAS_EXCLUIDAS = new Set(['VIC. NEGOCIOS DE PERSONAS']);
 
@@ -333,7 +342,7 @@ function transformIssue(issue) {
   const tribuSquadJira = fields.customfield_27826?.value || null;
   const squadJira = fields.customfield_27826?.child?.value || null;
 
-  // Excluir tribus no deseadas
+  // Excluir tribus explícitamente no deseadas
   if (tribuSquadJira && TRIBUS_EXCLUIDAS.has(tribuSquadJira)) return null;
   if (squadJira && TRIBUS_EXCLUIDAS.has(squadJira)) return null;
 
@@ -344,6 +353,9 @@ function transformIssue(issue) {
 
   // Si no se pudo clasificar, descartar
   if (!clasificacion) return null;
+
+  // Solo incluir tribus válidas de patrimoniales
+  if (!TRIBUS_VALIDAS.has(clasificacion.tribu) && clasificacion.tribu !== 'Multiproducto') return null;
 
   const createdDate = fields.created;
   const resolvedDate = fields.resolutiondate || null;

@@ -75,10 +75,10 @@ export interface PlataformaMensual {
 }
 
 export interface FiltrosIncidencias {
-  tribu?: Tribu;
-  squad?: Squad;
-  producto?: Producto;
-  plataforma?: string;
+  tribus?: string[];
+  squads?: string[];
+  productos?: string[];
+  plataformas?: string[];
   fechaDesde?: string;
   fechaHasta?: string;
 }

@@ -32,10 +32,10 @@ function App() {
     squadsDisponibles,
     productosDisponibles,
     plataformasDisponibles,
-    setTribu,
-    setSquad,
-    setProducto,
-    setPlataforma,
+    setTribus,
+    setSquads,
+    setProductos,
+    setPlataformas,
     setFechaDesde,
     setFechaHasta,
     limpiarFiltros,
@@ -93,10 +93,10 @@ function App() {
           squadsDisponibles={squadsDisponibles}
           productosDisponibles={productosDisponibles}
           plataformasDisponibles={plataformasDisponibles}
-          onTribuChange={setTribu}
-          onSquadChange={setSquad}
-          onProductoChange={setProducto}
-          onPlataformaChange={setPlataforma}
+          onTribusChange={setTribus}
+          onSquadsChange={setSquads}
+          onProductosChange={setProductos}
+          onPlataformasChange={setPlataformas}
           onFechaDesdeChange={setFechaDesde}
           onFechaHastaChange={setFechaHasta}
           onLimpiar={limpiarFiltros}
