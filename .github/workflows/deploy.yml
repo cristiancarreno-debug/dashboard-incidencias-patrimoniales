@@ -4,7 +4,7 @@ on:
   push:
     branches: ['main']
   schedule:
-    - cron: '0 */1 * * *'  # Cada hora
+    - cron: '0 13 * * *'  # 8:00 AM Colombia (UTC-5)
   workflow_dispatch:
 
 permissions:

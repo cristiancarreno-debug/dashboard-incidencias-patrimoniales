@@ -78,7 +78,14 @@ function App() {
           <div className="text-right">
             <p className="text-xs text-slate-400">Última actualización</p>
             <p className="text-sm font-medium text-slate-600">{lastUpdated}</p>
-            <button className="mt-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+            <button
+              onClick={() => {
+                if (confirm('¿Deseas actualizar los datos desde Jira? Esto puede tardar unos minutos.')) {
+                  window.open('https://github.com/cristiancarreno-debug/dashboard-incidencias-patrimoniales/actions/workflows/deploy.yml', '_blank');
+                }
+              }}
+              className="mt-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
               Actualizar ahora
             </button>
           </div>

@@ -357,6 +357,10 @@ function transformIssue(issue) {
   // Solo incluir tribus válidas de patrimoniales
   if (!TRIBUS_VALIDAS.has(clasificacion.tribu) && clasificacion.tribu !== 'Multiproducto') return null;
 
+  // Excluir estados cancelados (doble verificación post-query)
+  const status = fields.status?.name || '';
+  if (status.toLowerCase().includes('cancelad')) return null;
+
   const createdDate = fields.created;
   const resolvedDate = fields.resolutiondate || null;
   const now = new Date();
