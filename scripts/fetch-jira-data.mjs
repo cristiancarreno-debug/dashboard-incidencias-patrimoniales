@@ -147,7 +147,7 @@ async function fetchAllIncidencias() {
 
   do {
     const encodedJql = encodeURIComponent(JQL);
-    const url = `/rest/api/3/search?jql=${encodedJql}&fields=${fields}&maxResults=${maxResults}&startAt=${startAt}`;
+    const url = `/rest/api/3/search/jql?jql=${encodedJql}&fields=${fields}&maxResults=${maxResults}&startAt=${startAt}`;
     const response = await jiraRequest(url);
 
     total = response.total;
