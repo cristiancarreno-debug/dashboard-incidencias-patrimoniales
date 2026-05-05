@@ -59,7 +59,7 @@ function generarIncidencias(): IncidenciaClasificada[] {
       const edad = calcularEdad(created, resolved);
 
       incidencias.push({
-        key: `PAT-${counter++}`,
+        key: `MDSB-${1000000 + counter++}`,
         summary: `Incidencia ${producto} - ${plataforma}`,
         status,
         assignee,
@@ -71,7 +71,7 @@ function generarIncidencias(): IncidenciaClasificada[] {
         plataforma,
         edadDias: edad,
         rangoResolucion: resolved ? calcularRango(edad) : null,
-        jiraUrl: `https://jira.example.com/browse/PAT-${counter - 1}`,
+        jiraUrl: `https://jirasegurosbolivar.atlassian.net/browse/MDSB-${1000000 + counter}`,
       });
     }
   }

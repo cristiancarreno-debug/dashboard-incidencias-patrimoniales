@@ -49,6 +49,8 @@ export const SQUADS: Exclude<Squad, 'Sin clasificar'>[] = [
 ];
 
 export const PLATAFORMAS = [
-  'Portal Web', 'App Móvil', 'Core Seguros', 'Pasarela de Pagos',
-  'API Gateway', 'Backoffice', 'Sin plataforma',
+  'Simon Cotizadores', 'Simon WEB', 'Tronador', 'SAI',
+  'Jelpit Conjuntos', 'Plataforma Constructor', 'Plataforma agro',
+  'Estudio Digital', 'Portal de pagos', 'Arcgis', 'Biometría facial',
+  'Simon Ventas', 'Obra al día', 'Datamart', 'Sios',
 ];
