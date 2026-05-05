@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { loadIncidencias } from './data/load-data';
-import { TRIBUS } from './data/mappings';
 import { useFilters } from './hooks/useFilters';
 import { useMetrics } from './hooks/useMetrics';
 import { SummaryCounters } from './components/SummaryCounters';
@@ -29,6 +28,7 @@ function App() {
   const {
     filtros,
     incidenciasFiltradas,
+    tribus,
     squadsDisponibles,
     productosDisponibles,
     plataformasDisponibles,
@@ -89,7 +89,7 @@ function App() {
         {/* Filtros */}
         <FilterBar
           filtros={filtros}
-          tribus={TRIBUS}
+          tribus={tribus}
           squadsDisponibles={squadsDisponibles}
           productosDisponibles={productosDisponibles}
           plataformasDisponibles={plataformasDisponibles}

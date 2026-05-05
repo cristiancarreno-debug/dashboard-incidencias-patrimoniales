@@ -3,9 +3,9 @@ import { X } from 'lucide-react';
 
 interface Props {
   filtros: FiltrosIncidencias;
-  tribus: Tribu[];
-  squadsDisponibles: Squad[];
-  productosDisponibles: Producto[];
+  tribus: string[];
+  squadsDisponibles: string[];
+  productosDisponibles: string[];
   plataformasDisponibles: string[];
   onTribuChange: (v?: Tribu) => void;
   onSquadChange: (v?: Squad) => void;

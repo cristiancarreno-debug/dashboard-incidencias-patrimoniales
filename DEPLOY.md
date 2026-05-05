@@ -8,8 +8,21 @@
 
 📦 https://github.com/cristiancarreno-debug/dashboard-incidencias-patrimoniales
 
-## Notas
+## Actualización de Datos
 
-- El deploy se realiza automáticamente con cada push a `main` vía GitHub Actions
-- Actualmente usa datos demo; para conectar con Jira real, implementar el backend según el spec
-- Stack: React 18 + Vite 5 + TypeScript + Tailwind CSS + Recharts + Shadcn UI
+- Los datos se actualizan **automáticamente cada hora** vía GitHub Actions
+- El workflow consulta Jira (proyecto MDSB, tipo Incident) y clasifica por producto/tribu/squad
+- También se puede disparar manualmente desde GitHub Actions → "Run workflow"
+
+## Configuración
+
+Los secrets del repositorio contienen las credenciales de Jira:
+- `JIRA_EMAIL`: Email de autenticación
+- `JIRA_API_TOKEN`: Token de API de Atlassian
+
+## Stack
+
+- Frontend: React 18 + Vite 5 + TypeScript + Tailwind CSS + Recharts
+- Datos: Script Node.js que consulta Jira API y genera JSON estático
+- Deploy: GitHub Pages con GitHub Actions (cron cada hora)
+- Clasificación: Basada en campo "Categoría / Ítem Configuración" (cf[10409])

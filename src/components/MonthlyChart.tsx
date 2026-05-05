@@ -1,4 +1,4 @@
-import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, ComposedChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
 import type { MetricaMensual } from '../types';
 
 interface Props {
@@ -11,17 +11,32 @@ export function MonthlyChart({ data }: Props) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
-      <ComposedChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+    <ResponsiveContainer width="100%" height={400}>
+      <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+        <XAxis
+          dataKey="mes"
+          tick={{ fontSize: 10 }}
+          angle={-45}
+          textAnchor="end"
+          height={60}
+        />
         <YAxis />
         <Tooltip />
-        <Legend />
-        <Bar dataKey="abiertas" name="Abiertas en el mes" fill="#3b82f6" />
-        <Bar dataKey="cerradas" name="Cerradas en el mes" fill="#22c55e" />
-        <Line type="monotone" dataKey="pendientes" name="Pendientes acumuladas" stroke="#f59e0b" strokeWidth={2} dot={false} />
-      </ComposedChart>
+        <Legend
+          verticalAlign="top"
+          wrapperStyle={{ paddingBottom: 10 }}
+        />
+        <Bar dataKey="abiertas" name="CREADAS" stackId="stack" fill="#dc2626">
+          <LabelList dataKey="abiertas" position="inside" fill="#fff" fontSize={9} />
+        </Bar>
+        <Bar dataKey="cerradas" name="CERRADAS" stackId="stack" fill="#16a34a">
+          <LabelList dataKey="cerradas" position="inside" fill="#fff" fontSize={9} />
+        </Bar>
+        <Bar dataKey="pendientes" name="BACKLOG" stackId="stack" fill="#eab308">
+          <LabelList dataKey="pendientes" position="inside" fill="#000" fontSize={9} />
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   );
 }
