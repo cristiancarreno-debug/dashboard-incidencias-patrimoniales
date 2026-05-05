@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ['main']
+  schedule:
+    - cron: '0 */1 * * *'  # Cada hora
   workflow_dispatch:
 
 permissions:
@@ -29,6 +31,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Fetch Jira data
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: node scripts/fetch-jira-data.mjs
 
       - name: Build
         run: npm run build

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { DEMO_INCIDENCIAS } from './data/demo-data';
+import { useState, useEffect } from 'react';
+import { loadIncidencias } from './data/load-data';
 import { TRIBUS } from './data/mappings';
 import { useFilters } from './hooks/useFilters';
 import { useMetrics } from './hooks/useMetrics';
@@ -11,9 +11,20 @@ import { PlatformPie } from './components/PlatformPie';
 import { ResolutionPie } from './components/ResolutionPie';
 import { IncidenciasTable } from './components/IncidenciasTable';
 import { PlatformMonthlyChart } from './components/PlatformMonthlyChart';
+import type { IncidenciaClasificada } from './types';
 
 function App() {
-  const [lastUpdated] = useState(new Date().toLocaleString('es-CO'));
+  const [allIncidencias, setAllIncidencias] = useState<IncidenciaClasificada[]>([]);
+  const [lastUpdated, setLastUpdated] = useState('Cargando...');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadIncidencias().then(({ incidencias, lastUpdated: lu }) => {
+      setAllIncidencias(incidencias);
+      setLastUpdated(new Date(lu).toLocaleString('es-CO'));
+      setLoading(false);
+    });
+  }, []);
 
   const {
     filtros,
@@ -28,7 +39,7 @@ function App() {
     setFechaDesde,
     setFechaHasta,
     limpiarFiltros,
-  } = useFilters(DEMO_INCIDENCIAS);
+  } = useFilters(allIncidencias);
 
   const metrics = useMetrics(incidenciasFiltradas);
 
@@ -39,6 +50,17 @@ function App() {
   const incidencias2026 = incidenciasFiltradas.filter(
     i => new Date(i.createdDate).getFullYear() === 2026
   );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Cargando datos de incidencias...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
