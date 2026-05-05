@@ -362,6 +362,13 @@ function transformIssue(issue) {
   const statusLower = status.toLowerCase();
   if (statusLower === 'cancelado' || statusLower === 'cancelada' || statusLower.includes('cancel')) return null;
 
+  // Excluir ítems relacionados con CIA 2, Vida, Salud, ARL
+  const itemChild = childValue || '';
+  const itemParent = parentValue || '';
+  const summaryText = fields.summary || '';
+  const combinedText = `${itemChild} ${itemParent} ${summaryText}`.toLowerCase();
+  if (combinedText.includes('cia 2') || combinedText.includes('vida') || combinedText.includes('salud') || combinedText.includes('arl')) return null;
+
   const createdDate = fields.created;
   const resolvedDate = fields.resolutiondate || null;
   const now = new Date();
