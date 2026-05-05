@@ -224,7 +224,7 @@ async function fetchWithJQL(jql) {
 async function fetchAllIncidencias() {
   // JQL principal: trae TODAS las incidencias de las categorías padre de patrimoniales
   // Excluye: estado Cancelado
-  const baseFilter = `project = MDSB AND issuetype = Incident AND status != Cancelado`;
+  const baseFilter = `project = MDSB AND issuetype = Incident AND status != "Cancelado"`;
 
   const mainJQL = `${baseFilter} AND cf[10409] in cascadeOption("Aplicaciones Fuerza Ventas") AND created >= "2024-01-01" ORDER BY created DESC`;
 
@@ -359,7 +359,8 @@ function transformIssue(issue) {
 
   // Excluir estados cancelados (doble verificación post-query)
   const status = fields.status?.name || '';
-  if (status.toLowerCase().includes('cancelad')) return null;
+  const statusLower = status.toLowerCase();
+  if (statusLower === 'cancelado' || statusLower === 'cancelada' || statusLower.includes('cancel')) return null;
 
   const createdDate = fields.created;
   const resolvedDate = fields.resolutiondate || null;

@@ -84,7 +84,7 @@ export function FilterBar({
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 items-end w-full">
         <MultiSelect
           label="Tribu"
           options={tribus}
