@@ -57,7 +57,11 @@ export function AnnualTable({ data, filtros }: Props) {
                   <span className="font-semibold text-lg">{row.totalCreadas}</span>
                   {/* Variación 2025 vs 2024 */}
                   {row.anio === 2025 && variacion2025vs2024 !== null && (
-                    <span className={`text-sm font-bold ${variacion2025vs2024 <= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    <span className={`text-sm font-bold ${
+                      Math.abs(variacion2025vs2024) >= 50 ? 'text-green-600' :
+                      Math.abs(variacion2025vs2024) >= 30 ? 'text-orange-500' :
+                      'text-red-600'
+                    }`}>
                       {variacion2025vs2024 > 0 ? '↑' : '↓'} {Math.abs(variacion2025vs2024)}%
                     </span>
                   )}
