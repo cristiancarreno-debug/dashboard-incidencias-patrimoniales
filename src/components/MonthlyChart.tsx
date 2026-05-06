@@ -8,30 +8,35 @@ interface Props {
 interface TrimestrePromedio {
   label: string;
   promedio: number;
-  meses: string[];
+  spanMeses: number; // cuántos meses abarca este trimestre en los datos
 }
 
 function calcularPromediosTrimestrales(data: MetricaMensual[]): TrimestrePromedio[] {
   if (data.length === 0) return [];
 
-  const trimestres: TrimestrePromedio[] = [];
-  const mesesPorTrimestre: Record<string, MetricaMensual[]> = {};
+  const trimestres: { key: string; label: string; meses: MetricaMensual[] }[] = [];
+  let currentKey = '';
 
   data.forEach(d => {
     const [year, month] = d.mes.split('-');
     const q = Math.ceil(parseInt(month) / 3);
-    const key = `${year} ${q === 1 ? 'I' : q === 2 ? 'II' : q === 3 ? 'III' : 'IV'} trimestre`;
-    if (!mesesPorTrimestre[key]) mesesPorTrimestre[key] = [];
-    mesesPorTrimestre[key].push(d);
+    const romanQ = q === 1 ? 'I' : q === 2 ? 'II' : q === 3 ? 'III' : 'IV';
+    const key = `${year}-Q${q}`;
+    const label = `Promedio creadas ${year} ${romanQ} trimestre`;
+
+    if (key !== currentKey) {
+      trimestres.push({ key, label, meses: [d] });
+      currentKey = key;
+    } else {
+      trimestres[trimestres.length - 1].meses.push(d);
+    }
   });
 
-  Object.entries(mesesPorTrimestre).forEach(([label, meses]) => {
-    const totalCreadas = meses.reduce((sum, m) => sum + m.abiertas, 0);
-    const promedio = Math.round(totalCreadas / meses.length);
-    trimestres.push({ label: `Promedio creadas ${label}`, promedio, meses: meses.map(m => m.mes) });
+  return trimestres.map(t => {
+    const totalCreadas = t.meses.reduce((sum, m) => sum + m.abiertas, 0);
+    const promedio = Math.round(totalCreadas / t.meses.length);
+    return { label: t.label, promedio, spanMeses: t.meses.length };
   });
-
-  return trimestres;
 }
 
 export function MonthlyChart({ data }: Props) {
@@ -68,13 +73,17 @@ export function MonthlyChart({ data }: Props) {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Promedios trimestrales */}
+      {/* Promedios trimestrales alineados con las barras */}
       {trimestres.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-4 justify-center">
+        <div className="flex mt-2 mx-[50px] mr-[30px]">
           {trimestres.map((t) => (
-            <div key={t.label} className="border-2 border-dashed border-red-400 rounded px-3 py-2 text-center">
-              <div className="text-lg font-bold text-red-600">{t.promedio}</div>
-              <div className="text-xs text-red-500 italic">{t.label}</div>
+            <div
+              key={t.label}
+              className="border-2 border-dashed border-red-400 rounded py-2 px-1 text-center"
+              style={{ flex: `${t.spanMeses} ${t.spanMeses} 0%` }}
+            >
+              <div className="text-xl font-bold text-slate-800">{t.promedio}</div>
+              <div className="text-[10px] text-red-500 italic leading-tight">{t.label}</div>
             </div>
           ))}
         </div>
