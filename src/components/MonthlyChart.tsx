@@ -80,7 +80,7 @@ export function MonthlyChart({ data }: Props) {
 
       {/* Promedios trimestrales alineados con las barras */}
       {trimestres.length > 0 && (
-        <div className="relative mx-[50px] mr-[30px]" style={{ marginTop: '-12px' }}>
+        <div className="relative mx-[50px] mr-[30px]" style={{ marginTop: '-55px' }}>
           <div className="relative" style={{ height: '60px' }}>
             {trimestres.map((t) => {
               const totalMeses = data.length;
