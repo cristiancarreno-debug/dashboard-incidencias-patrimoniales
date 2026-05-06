@@ -15,6 +15,9 @@ export function useMetrics(incidencias: IncidenciaClasificada[]) {
   const metricasMensuales = useMemo((): MetricaMensual[] => {
     const mesesMap = new Map<string, { abiertas: number; cerradas: number }>();
 
+    // Solo considerar meses de creación de las incidencias filtradas
+    const mesesCreacion = new Set(incidencias.map(inc => inc.createdDate.slice(0, 7)));
+
     incidencias.forEach(inc => {
       const mesCreacion = inc.createdDate.slice(0, 7);
       if (!mesesMap.has(mesCreacion)) mesesMap.set(mesCreacion, { abiertas: 0, cerradas: 0 });
@@ -22,8 +25,11 @@ export function useMetrics(incidencias: IncidenciaClasificada[]) {
 
       if (inc.resolvedDate) {
         const mesCierre = inc.resolvedDate.slice(0, 7);
-        if (!mesesMap.has(mesCierre)) mesesMap.set(mesCierre, { abiertas: 0, cerradas: 0 });
-        mesesMap.get(mesCierre)!.cerradas++;
+        // Solo contar cierre si el mes está dentro del rango de meses de creación
+        if (mesesCreacion.has(mesCierre)) {
+          if (!mesesMap.has(mesCierre)) mesesMap.set(mesCierre, { abiertas: 0, cerradas: 0 });
+          mesesMap.get(mesCierre)!.cerradas++;
+        }
       }
     });
 
@@ -33,7 +39,7 @@ export function useMetrics(incidencias: IncidenciaClasificada[]) {
     return mesesOrdenados.map(mes => {
       const data = mesesMap.get(mes)!;
       acumulado += data.abiertas - data.cerradas;
-      return { mes, abiertas: data.abiertas, cerradas: data.cerradas, pendientes: acumulado };
+      return { mes, abiertas: data.abiertas, cerradas: data.cerradas, pendientes: Math.max(0, acumulado) };
     });
   }, [incidencias]);
 

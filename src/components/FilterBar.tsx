@@ -50,7 +50,7 @@ function MultiSelect({ label, options, selected, onChange }: {
         className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white text-left flex items-center gap-1 hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
       >
         <span className="flex-1 truncate text-slate-700">
-          {selected.length === 0 ? 'Todos' : selected.length === options.length ? 'Todos' : `${selected.length} de ${options.length}`}
+          {selected.length === 0 ? 'Todos' : selected.length === 1 ? selected[0] : 'Varios'}
         </span>
         <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
