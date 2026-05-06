@@ -113,49 +113,54 @@ function mapSquadJira(squad, tribu) {
 }
 
 function determinarProducto(childValue, summary, clasificacionDetallada, tribuJira, squadJira) {
-  // Usar clasificación detallada si existe (ej: "ANALÍTICA - Autos")
-  if (clasificacionDetallada) {
-    const det = clasificacionDetallada.toLowerCase();
-    if (det.includes('autos') || det.includes('auto')) return 'Autos';
-    if (det.includes('soat')) return 'SOAT';
-    if (det.includes('hogar')) return 'Hogar';
-    if (det.includes('cumplimiento')) return 'Cumplimiento';
-    if (det.includes('pymes') || det.includes('pyme')) return 'Pymes';
-    if (det.includes('agro')) return 'Agro';
-    if (det.includes('transporte')) return 'Transporte';
-    if (det.includes('decenal')) return 'Decenal';
-    if (det.includes('maquinaria')) return 'Maquinaria';
-    if (det.includes('zonas comunes') || det.includes('copropiedades')) return 'Zonas comunes';
-    if (det.includes('obra al día') || det.includes('obra al dia')) return 'Obra al día';
-    if (det.includes('cuotas al día') || det.includes('cuotas al dia')) return 'Cuotas al día';
-    if (det.includes('arrendamiento')) return 'Arrendamiento';
-  }
-
-  // Usar ítem de configuración
+  // Usar ítem de configuración primero (más confiable)
   if (childValue) {
     const match = ITEMS_PATRIMONIALES.find(c => c.item === childValue);
     if (match && match.producto !== 'Multiproducto') return match.producto;
   }
 
-  // Usar summary
-  return determinarProductoPorSummary(summary).producto;
+  // Usar Tribu/Squad de Jira para inferir producto
+  if (squadJira) {
+    const sq = squadJira.toLowerCase();
+    if (sq.includes('movilidad')) return 'Autos';
+    if (sq.includes('hogar')) return 'Hogar';
+    if (sq.includes('copropiedades')) return 'Cuotas al día';
+    if (sq.includes('pymes')) return 'Pymes';
+    if (sq.includes('cumplimiento')) return 'Cumplimiento';
+    if (sq.includes('agro')) return 'Agro';
+    if (sq.includes('decenal')) return 'Decenal';
+    if (sq.includes('arrendamiento')) return 'Arrendamiento';
+  }
+
+  // Usar summary como último recurso
+  const result = determinarProductoPorSummary(summary);
+  return result.producto;
 }
 
 function determinarProductoPorSummary(summary) {
   const s = (summary || '').toLowerCase();
+
+  // Excluir problemas de accesos (no son incidencias de producto)
+  if (s.includes('acceso') || s.includes('control accesos') || s.includes('permisos') || s.includes('contraseña') || s.includes('password') || s.includes('login') || s.includes('usuario bloqueado')) {
+    return { producto: '__EXCLUIR_ACCESOS__', tribu: '', squad: '' };
+  }
+
+  // Clasificar por producto
   if (s.includes('soat')) return { producto: 'SOAT', tribu: 'Movilidad', squad: 'Movilidad' };
-  if (s.includes('auto')) return { producto: 'Autos', tribu: 'Movilidad', squad: 'Movilidad' };
+  if (s.includes('autos') || s.includes('auto ') || s.includes('vehiculo') || s.includes('vehículo') || s.includes('movilidad')) return { producto: 'Autos', tribu: 'Movilidad', squad: 'Movilidad' };
   if (s.includes('hogar')) return { producto: 'Hogar', tribu: 'Vivienda', squad: 'Hogar' };
   if (s.includes('cumplimiento')) return { producto: 'Cumplimiento', tribu: 'Empresas', squad: 'Cumplimiento' };
-  if (s.includes('pymes') || s.includes('pyme')) return { producto: 'Pymes', tribu: 'Empresas', squad: 'Pymes' };
-  if (s.includes('agro')) return { producto: 'Agro', tribu: 'Empresas', squad: 'Agro y Transporte' };
-  if (s.includes('transporte')) return { producto: 'Transporte', tribu: 'Empresas', squad: 'Agro y Transporte' };
+  if (s.includes('pymes') || s.includes('pyme') || s.includes('prod. 778') || s.includes('prod. 777')) return { producto: 'Pymes', tribu: 'Empresas', squad: 'Pymes' };
+  if (s.includes('agro') || s.includes('agrícola') || s.includes('agricola')) return { producto: 'Agro', tribu: 'Empresas', squad: 'Agro y Transporte' };
+  if (s.includes('transporte') || s.includes('prod 40')) return { producto: 'Transporte', tribu: 'Empresas', squad: 'Agro y Transporte' };
   if (s.includes('decenal')) return { producto: 'Decenal', tribu: 'Empresas', squad: 'Decenal y Maquinaria' };
   if (s.includes('maquinaria')) return { producto: 'Maquinaria', tribu: 'Empresas', squad: 'Decenal y Maquinaria' };
-  if (s.includes('zonas comunes') || s.includes('copropiedades')) return { producto: 'Zonas comunes', tribu: 'Vivienda', squad: 'Copropiedades' };
+  if (s.includes('zonas comunes') || s.includes('copropiedades') || s.includes('copropiedad')) return { producto: 'Zonas comunes', tribu: 'Vivienda', squad: 'Copropiedades' };
   if (s.includes('obra al día') || s.includes('obra al dia')) return { producto: 'Obra al día', tribu: 'Vivienda', squad: 'Copropiedades' };
   if (s.includes('cuotas al día') || s.includes('cuotas al dia') || s.includes('jelpit conjuntos')) return { producto: 'Cuotas al día', tribu: 'Vivienda', squad: 'Copropiedades' };
   if (s.includes('arrendamiento') || s.includes('sai ') || s.includes('libertador')) return { producto: 'Arrendamiento', tribu: 'Arrendamiento', squad: 'Arrendamiento' };
+  if (s.includes('banca') || s.includes('cia 3') || s.includes('tronador banca')) return { producto: 'Autos', tribu: 'Movilidad', squad: 'Movilidad' };
+
   return { producto: 'Multiproducto', tribu: 'Multiproducto', squad: 'Multiproducto' };
 }
 
@@ -356,6 +361,12 @@ function transformIssue(issue) {
 
   // Solo incluir tribus válidas de patrimoniales
   if (!TRIBUS_VALIDAS.has(clasificacion.tribu) && clasificacion.tribu !== 'Multiproducto') return null;
+
+  // Excluir problemas de accesos
+  if (clasificacion.producto === '__EXCLUIR_ACCESOS__') return null;
+
+  // Excluir Multiproducto (no se puede asignar a un producto específico)
+  if (clasificacion.producto === 'Multiproducto' || clasificacion.tribu === 'Multiproducto') return null;
 
   // Excluir estados cancelados (doble verificación post-query)
   const status = fields.status?.name || '';
