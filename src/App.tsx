@@ -129,7 +129,7 @@ function App() {
           <h2 className="text-lg font-semibold text-slate-700 mb-4">
             Comparativa Anual
           </h2>
-          <AnnualTable data={metrics.metricasAnuales} />
+          <AnnualTable data={metrics.metricasAnuales} filtros={filtros} />
         </section>
 
         {/* Gráficos de plataforma */}
