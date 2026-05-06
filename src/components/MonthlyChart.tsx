@@ -32,11 +32,14 @@ function calcularPromediosTrimestrales(data: MetricaMensual[]): TrimestrePromedi
     }
   });
 
-  return trimestres.map(t => {
-    const totalCreadas = t.meses.reduce((sum, m) => sum + m.abiertas, 0);
-    const promedio = Math.round(totalCreadas / t.meses.length);
-    return { label: t.label, promedio, spanMeses: t.meses.length };
-  });
+  // Solo incluir trimestres completos (3 meses)
+  return trimestres
+    .filter(t => t.meses.length === 3)
+    .map(t => {
+      const totalCreadas = t.meses.reduce((sum, m) => sum + m.abiertas, 0);
+      const promedio = Math.round(totalCreadas / t.meses.length);
+      return { label: t.label, promedio, spanMeses: t.meses.length };
+    });
 }
 
 export function MonthlyChart({ data }: Props) {
@@ -75,7 +78,7 @@ export function MonthlyChart({ data }: Props) {
 
       {/* Promedios trimestrales alineados con las barras */}
       {trimestres.length > 0 && (
-        <div className="flex mt-2 mx-[50px] mr-[30px]">
+        <div className="flex -mt-4 mx-[50px] mr-[30px]">
           {trimestres.map((t) => (
             <div
               key={t.label}
