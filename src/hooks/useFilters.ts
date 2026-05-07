@@ -15,7 +15,7 @@ export function useFilters(incidencias: IncidenciaClasificada[]) {
     return Array.from(set).sort();
   }, [incidencias]);
 
-  // Opciones filtradas por cascada
+  // Opciones filtradas por cascada (basadas en datos reales)
   const squadsDisponibles = useMemo(() => {
     if (!filtros.tribus || filtros.tribus.length === 0) return todosSquads;
     const filtered = incidencias.filter(i => filtros.tribus!.includes(i.tribu));
@@ -32,9 +32,13 @@ export function useFilters(incidencias: IncidenciaClasificada[]) {
   }, [incidencias, filtros.tribus, filtros.squads]);
 
   const plataformasDisponibles = useMemo(() => {
-    const set = new Set(incidencias.map(i => i.plataforma));
+    let filtered = incidencias;
+    if (filtros.tribus && filtros.tribus.length > 0) filtered = filtered.filter(i => filtros.tribus!.includes(i.tribu));
+    if (filtros.squads && filtros.squads.length > 0) filtered = filtered.filter(i => filtros.squads!.includes(i.squad));
+    if (filtros.productos && filtros.productos.length > 0) filtered = filtered.filter(i => filtros.productos!.includes(i.producto));
+    const set = new Set(filtered.map(i => i.plataforma));
     return Array.from(set).sort();
-  }, [incidencias]);
+  }, [incidencias, filtros.tribus, filtros.squads, filtros.productos]);
 
   // Aplicar filtros (multi-selección)
   const incidenciasFiltradas = useMemo(() => {
