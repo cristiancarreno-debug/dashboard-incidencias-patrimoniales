@@ -407,7 +407,7 @@ function transformIssue(issue) {
   const itemParent = parentValue || '';
   const summaryText = fields.summary || '';
   const combinedText = `${itemChild} ${itemParent} ${summaryText}`.toLowerCase();
-  if (combinedText.includes('cia 2') || combinedText.includes('vida') || combinedText.includes('salud') || combinedText.includes('arl')) return null;
+  if (combinedText.includes('cia 2') || combinedText.includes(' vida ') || combinedText.includes('vida grupo') || combinedText.includes('salud') || combinedText.includes(' arl ') || combinedText.includes(' arl,')) return null;
 
   const createdDate = fields.created;
   const resolvedDate = fields.resolutiondate || null;
