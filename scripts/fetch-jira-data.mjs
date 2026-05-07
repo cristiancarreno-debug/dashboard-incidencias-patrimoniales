@@ -21,20 +21,6 @@ if (!JIRA_EMAIL || !JIRA_API_TOKEN) {
 
 const AUTH_HEADER = `Basic ${Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString('base64')}`;
 
-/** Extrae texto plano de un documento ADF (Atlassian Document Format) */
-function extractTextFromADF(adf) {
-  if (!adf) return '';
-  if (typeof adf === 'string') return adf;
-  let text = '';
-  if (adf.text) text += adf.text;
-  if (adf.content && Array.isArray(adf.content)) {
-    for (const node of adf.content) {
-      text += extractTextFromADF(node) + ' ';
-    }
-  }
-  return text;
-}
-
 /** Ítems de configuración específicos de patrimoniales con su clasificación */
 const ITEMS_PATRIMONIALES = [
   { item: 'Análisis de Solicitudes', aplicacion: 'Estudio Digital', producto: 'Arrendamiento', tribu: 'Arrendamiento', squad: 'Arrendamiento' },
@@ -78,101 +64,104 @@ const ITEMS_PATRIMONIALES = [
 ];
 
 function clasificar(childValue, parentValue, summary, tribuJira, squadJira, clasificacionDetallada) {
+  // 1. Usar el campo Tribu/Squad de Jira si está disponible (fuente más confiable)
+  if (tribuJira) {
+    const tribu = mapTribuJira(tribuJira);
+    const squad = squadJira ? mapSquadJira(squadJira, tribuJira) : tribu;
+    const producto = determinarProducto(childValue, summary, clasificacionDetallada, tribuJira, squadJira);
+    const plataforma = determinarPlataforma(childValue, parentValue, summary);
+    return { producto, tribu, squad, plataforma };
+  }
+
+  // 2. Buscar por el valor hijo (ítem específico) si existe
+  if (childValue) {
+    const match = ITEMS_PATRIMONIALES.find(c => c.item === childValue);
+    if (match) {
+      return { producto: match.producto, tribu: match.tribu, squad: match.squad, plataforma: match.aplicacion };
+    }
+  }
+
+  // 3. Si es "Aplicaciones Fuerza Ventas" sin más info, clasificar por summary
+  if (parentValue === 'Aplicaciones Fuerza Ventas' || parentValue === 'Aplicaciones Empresariales' || parentValue === 'Activos Digitales') {
+    const producto = determinarProductoPorSummary(summary);
+    const plataforma = determinarPlataforma(childValue, parentValue, summary);
+    return { producto: producto.producto, tribu: producto.tribu, squad: producto.squad, plataforma };
+  }
+
+  return null;
+}
+
+function mapTribuJira(tribu) {
+  const map = {
+    'Movilidad': 'Movilidad',
+    'Vivienda': 'Vivienda',
+    'Empresas': 'Empresas',
+    'Arrendamiento': 'Arrendamiento',
+    'Copropiedades': 'Vivienda',
+    'Hogar': 'Vivienda',
+    'Pymes': 'Empresas',
+    'Cumplimiento': 'Empresas',
+    'Agro y Transporte': 'Empresas',
+    'Decenal y Maquinaria': 'Empresas',
+  };
+  return map[tribu] || tribu;
+}
+
+function mapSquadJira(squad, tribu) {
+  if (squad) return squad;
+  return tribu;
+}
+
+function determinarProducto(childValue, summary, clasificacionDetallada, tribuJira, squadJira) {
+  // Usar ítem de configuración primero (más confiable)
+  if (childValue) {
+    const match = ITEMS_PATRIMONIALES.find(c => c.item === childValue);
+    if (match && match.producto !== 'Multiproducto') return match.producto;
+  }
+
+  // Usar Tribu/Squad de Jira para inferir producto
+  if (squadJira) {
+    const sq = squadJira.toLowerCase();
+    if (sq.includes('movilidad')) return 'Autos';
+    if (sq.includes('hogar')) return 'Hogar';
+    if (sq.includes('copropiedades')) return 'Cuotas al día';
+    if (sq.includes('pymes')) return 'Pymes';
+    if (sq.includes('cumplimiento')) return 'Cumplimiento';
+    if (sq.includes('agro')) return 'Agro';
+    if (sq.includes('decenal')) return 'Decenal';
+    if (sq.includes('arrendamiento')) return 'Arrendamiento';
+  }
+
+  // Usar summary como último recurso
+  const result = determinarProductoPorSummary(summary);
+  return result.producto;
+}
+
+function determinarProductoPorSummary(summary) {
   const s = (summary || '').toLowerCase();
 
-  // Excluir problemas de accesos
+  // Excluir problemas de accesos (no son incidencias de producto)
   if (s.includes('acceso') || s.includes('control accesos') || s.includes('permisos') || s.includes('contraseña') || s.includes('password') || s.includes('login') || s.includes('usuario bloqueado')) {
-    return { producto: '__EXCLUIR_ACCESOS__', tribu: '', squad: '', plataforma: '' };
+    return { producto: '__EXCLUIR_ACCESOS__', tribu: '', squad: '' };
   }
 
-  // PASO 1: Revisar campo Tribu/Squad de Jira
-  // PASO 2: Validar con la descripción
-  // Si coinciden → asociar a la tribu de Jira
-  // Si NO coinciden → asociar al producto que identifique en la descripción
+  // Clasificar por producto
+  if (s.includes('soat')) return { producto: 'SOAT', tribu: 'Movilidad', squad: 'Movilidad' };
+  if (s.includes('autos') || s.includes('auto ') || s.includes('vehiculo') || s.includes('vehículo') || s.includes('movilidad')) return { producto: 'Autos', tribu: 'Movilidad', squad: 'Movilidad' };
+  if (s.includes('hogar')) return { producto: 'Hogar', tribu: 'Vivienda', squad: 'Hogar' };
+  if (s.includes('cumplimiento')) return { producto: 'Cumplimiento', tribu: 'Empresas', squad: 'Cumplimiento' };
+  if (s.includes('pymes') || s.includes('pyme') || s.includes('prod. 778') || s.includes('prod. 777')) return { producto: 'Pymes', tribu: 'Empresas', squad: 'Pymes' };
+  if (s.includes('agro') || s.includes('agrícola') || s.includes('agricola')) return { producto: 'Agro', tribu: 'Empresas', squad: 'Agro y Transporte' };
+  if (s.includes('transporte') || s.includes('prod 40')) return { producto: 'Transporte', tribu: 'Empresas', squad: 'Agro y Transporte' };
+  if (s.includes('decenal')) return { producto: 'Decenal', tribu: 'Empresas', squad: 'Decenal y Maquinaria' };
+  if (s.includes('maquinaria')) return { producto: 'Maquinaria', tribu: 'Empresas', squad: 'Decenal y Maquinaria' };
+  if (s.includes('zonas comunes') || s.includes('copropiedades') || s.includes('copropiedad')) return { producto: 'Zonas comunes', tribu: 'Vivienda', squad: 'Copropiedades' };
+  if (s.includes('obra al día') || s.includes('obra al dia')) return { producto: 'Obra al día', tribu: 'Vivienda', squad: 'Copropiedades' };
+  if (s.includes('cuotas al día') || s.includes('cuotas al dia') || s.includes('jelpit conjuntos')) return { producto: 'Cuotas al día', tribu: 'Vivienda', squad: 'Copropiedades' };
+  if (s.includes('arrendamiento') || s.includes('sai ') || s.includes('libertador')) return { producto: 'Arrendamiento', tribu: 'Arrendamiento', squad: 'Arrendamiento' };
+  if (s.includes('banca') || s.includes('cia 3') || s.includes('tronador banca')) return { producto: 'Autos', tribu: 'Movilidad', squad: 'Movilidad' };
 
-  // Identificar producto por texto (summary + descripción)
-  const productoTexto = identificarProductoPorTexto(s);
-
-  // Si se identificó producto en el texto, usarlo (prevalece)
-  if (productoTexto) {
-    const tribuSquad = derivarTribuSquadDeProducto(productoTexto);
-    const plataforma = determinarPlataforma(childValue, parentValue, summary);
-    return { producto: productoTexto, tribu: tribuSquad.tribu, squad: tribuSquad.squad, plataforma };
-  }
-
-  // Si NO se identificó producto en texto, usar Tribu/Squad de Jira + squad para inferir
-  if (tribuJira && TRIBUS_JIRA_VALIDAS.has(tribuJira)) {
-    let producto = 'Multiproducto';
-    if (squadJira) {
-      const sq = squadJira.toLowerCase();
-      if (sq.includes('movilidad')) producto = 'Autos';
-      else if (sq.includes('hogar')) producto = 'Hogar';
-      else if (sq.includes('copropiedades')) producto = 'Cuotas al día';
-      else if (sq.includes('pymes')) producto = 'Pymes';
-      else if (sq.includes('cumplimiento')) producto = 'Cumplimiento';
-      else if (sq.includes('agro')) producto = 'Agro';
-      else if (sq.includes('decenal') || sq.includes('maquinaria')) producto = 'Decenal';
-      else if (sq.includes('arrendamiento')) producto = 'Arrendamiento';
-    } else {
-      // Sin squad, usar tribu directamente
-      if (tribuJira === 'Movilidad') producto = 'Autos';
-      else if (tribuJira === 'Arrendamiento') producto = 'Arrendamiento';
-      else if (tribuJira === 'Vivienda' || tribuJira === 'Copropiedades') producto = 'Cuotas al día';
-      else if (tribuJira === 'Hogar') producto = 'Hogar';
-      else if (tribuJira === 'Empresas') producto = 'Pymes';
-      else if (tribuJira === 'Pymes') producto = 'Pymes';
-      else if (tribuJira === 'Cumplimiento') producto = 'Cumplimiento';
-      else if (tribuJira === 'Agro y Transporte') producto = 'Agro';
-      else if (tribuJira === 'Decenal y Maquinaria') producto = 'Decenal';
-    }
-
-    if (producto !== 'Multiproducto') {
-      const tribuSquad = derivarTribuSquadDeProducto(producto);
-      const plataforma = determinarPlataforma(childValue, parentValue, summary);
-      return { producto, tribu: tribuSquad.tribu, squad: tribuSquad.squad, plataforma };
-    }
-  }
-
-  // No se pudo clasificar
-  return { producto: 'Multiproducto', tribu: 'Multiproducto', squad: 'Multiproducto', plataforma: determinarPlataforma(childValue, parentValue, summary) };
-}
-
-/** Identifica el producto basándose SOLO en el texto (summary + descripción) */
-function identificarProductoPorTexto(s) {
-  if (s.includes('soat')) return 'SOAT';
-  if (s.includes('autos') || s.includes('auto ') || s.includes('vehiculo') || s.includes('vehículo') || s.includes('tronador banca') || s.includes('banca + movilidad')) return 'Autos';
-  if (s.includes('hogar')) return 'Hogar';
-  if (s.includes('cumplimiento')) return 'Cumplimiento';
-  if (s.includes('pymes') || s.includes('pyme') || s.includes('prod. 778') || s.includes('prod. 777')) return 'Pymes';
-  if (s.includes('agro') || s.includes('agrícola') || s.includes('agricola')) return 'Agro';
-  if (s.includes('transporte') || s.includes('prod 40')) return 'Transporte';
-  if (s.includes('maquinaria') || s.includes('prod 152') || s.includes('producto 152')) return 'Maquinaria';
-  if (s.includes('decenal')) return 'Decenal';
-  if (s.includes('zonas comunes') || s.includes('copropiedades') || s.includes('copropiedad')) return 'Zonas comunes';
-  if (s.includes('obra al día') || s.includes('obra al dia')) return 'Obra al día';
-  if (s.includes('cuotas al día') || s.includes('cuotas al dia') || s.includes('jelpit conjuntos')) return 'Cuotas al día';
-  if (s.includes('arrendamiento') || s.includes('sai ') || s.includes('libertador')) return 'Arrendamiento';
-  return null; // No se pudo identificar
-}
-
-/** Deriva tribu y squad a partir del producto (fuente de verdad única) */
-function derivarTribuSquadDeProducto(producto) {
-  const map = {
-    'Autos': { tribu: 'Movilidad', squad: 'Movilidad' },
-    'SOAT': { tribu: 'Movilidad', squad: 'Movilidad' },
-    'Hogar': { tribu: 'Vivienda', squad: 'Hogar' },
-    'Cuotas al día': { tribu: 'Vivienda', squad: 'Copropiedades' },
-    'Obra al día': { tribu: 'Vivienda', squad: 'Copropiedades' },
-    'Zonas comunes': { tribu: 'Vivienda', squad: 'Copropiedades' },
-    'Decenal': { tribu: 'Vivienda', squad: 'Decenal y Maquinaria' },
-    'Maquinaria': { tribu: 'Vivienda', squad: 'Decenal y Maquinaria' },
-    'Pymes': { tribu: 'Empresas', squad: 'Pymes' },
-    'Cumplimiento': { tribu: 'Empresas', squad: 'Cumplimiento' },
-    'Agro': { tribu: 'Empresas', squad: 'Agro y Transporte' },
-    'Transporte': { tribu: 'Empresas', squad: 'Agro y Transporte' },
-    'Arrendamiento': { tribu: 'Arrendamiento', squad: 'Arrendamiento' },
-  };
-  return map[producto] || { tribu: 'Multiproducto', squad: 'Multiproducto' };
+  return { producto: 'Multiproducto', tribu: 'Multiproducto', squad: 'Multiproducto' };
 }
 
 function determinarPlataforma(childValue, parentValue, summary) {
@@ -214,7 +203,7 @@ function jiraRequest(urlPath) {
 }
 
 async function fetchWithJQL(jql) {
-  const fields = 'summary,status,assignee,created,resolutiondate,customfield_10409,customfield_27826,customfield_11219,customfield_10403,description';
+  const fields = 'summary,status,assignee,created,resolutiondate,customfield_10409,customfield_27826,customfield_11219,customfield_10403';
   const maxResults = 100;
   let allIssues = [];
   let nextPageToken = null;
@@ -238,104 +227,100 @@ async function fetchWithJQL(jql) {
 }
 
 async function fetchAllIncidencias() {
+  // JQL principal: trae TODAS las incidencias de las categorías padre de patrimoniales
+  // Excluye: estado Cancelado
   const baseFilter = `project = MDSB AND issuetype = Incident AND status != "Cancelado"`;
+
+  const mainJQL = `${baseFilter} AND cf[10409] in cascadeOption("Aplicaciones Fuerza Ventas") AND created >= "2024-01-01" ORDER BY created DESC`;
+
+  // JQLs adicionales para ítems específicos bajo otras categorías
+  const additionalQueries = [
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "SAI")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "SAI WEB")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "SIOS")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "TRONADOR BANCA + MOVILIDAD")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "TRONADOR CIA 3 EXCEPTO AUTOS Y SOAT")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Tronador Contingencia")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Tronador Batch (Cartera, reserva, cierres)")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "ARCGIS")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Planificador Agrícola")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Obra al día")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Constructor")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "CONSTRUPLAN")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Cuotas al día")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Biometría Facial")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "VentaDigitalAutos - IBM")`,
+    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "VentaSoatDigital - IBM")`,
+    `cf[10409] in cascadeOption("Activos Digitales", "Jelpit Conjuntos Cuotas al día")`,
+    `cf[10409] in cascadeOption("Activos Digitales", "Jelpit Pymes")`,
+    `cf[10409] in cascadeOption("IA", "Análisis de Solicitudes")`,
+  ];
 
   const seenKeys = new Set();
   let allIssues = [];
 
-  // ENFOQUE 1: Traer por campo Tribu/Squad (cf[27826])
-  const tribuQueries = [
-    `cf[27826] in cascadeOption("Movilidad")`,
-    `cf[27826] in cascadeOption("Vivienda")`,
-    `cf[27826] in cascadeOption("Empresas")`,
-    `cf[27826] in cascadeOption("Arrendamiento")`,
-    `cf[27826] in cascadeOption("Copropiedades")`,
-    `cf[27826] in cascadeOption("Hogar")`,
-    `cf[27826] in cascadeOption("Pymes")`,
-    `cf[27826] in cascadeOption("Cumplimiento")`,
-    `cf[27826] in cascadeOption("Agro y Transporte")`,
-    `cf[27826] in cascadeOption("Decenal y Maquinaria")`,
-  ];
-
-  console.log('ENFOQUE 1: Consultando por Tribu/Squad...');
-  for (let i = 0; i < tribuQueries.length; i += 3) {
-    const batch = tribuQueries.slice(i, i + 3);
-    const jql = `${baseFilter} AND (${batch.join(' OR ')}) AND created >= "2024-01-01" ORDER BY created DESC`;
-    try {
-      const issues = await fetchWithJQL(jql);
-      for (const issue of issues) {
-        if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); }
+  // 1. Traer todas las de "Aplicaciones Fuerza Ventas" (la mayoría)
+  console.log('Consultando Aplicaciones Fuerza Ventas (principal)...');
+  try {
+    const issues = await fetchWithJQL(mainJQL);
+    for (const issue of issues) {
+      if (!seenKeys.has(issue.key)) {
+        seenKeys.add(issue.key);
+        allIssues.push(issue);
       }
-      console.log(`  Lote ${Math.floor(i / 3) + 1}: ${issues.length} issues (total: ${allIssues.length})`);
+    }
+    console.log(`  Principal: ${issues.length} issues`);
+  } catch (err) {
+    console.error(`  ❌ Error en query principal: ${err.message}`);
+  }
+
+  // 2. Traer las adicionales (Empresariales, Activos Digitales, IA)
+  console.log('Consultando categorías adicionales...');
+  for (let i = 0; i < additionalQueries.length; i += 3) {
+    const batch = additionalQueries.slice(i, i + 3);
+    const combinedJql = `${baseFilter} AND (${batch.join(' OR ')}) AND created >= "2024-01-01" ORDER BY created DESC`;
+
+    try {
+      const issues = await fetchWithJQL(combinedJql);
+      let newCount = 0;
+      for (const issue of issues) {
+        if (!seenKeys.has(issue.key)) {
+          seenKeys.add(issue.key);
+          allIssues.push(issue);
+          newCount++;
+        }
+      }
+      console.log(`  Lote ${Math.floor(i / 3) + 1}: ${issues.length} issues (${newCount} nuevas)`);
     } catch (err) {
-      console.warn(`  ⚠️ Error: ${err.message.slice(0, 100)}`);
+      console.warn(`  ⚠️ Error en lote: ${err.message.slice(0, 100)}`);
+      // Intentar uno por uno
       for (const q of batch) {
         try {
-          const issues = await fetchWithJQL(`${baseFilter} AND ${q} AND created >= "2024-01-01" ORDER BY created DESC`);
-          for (const issue of issues) { if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); } }
-        } catch (e) { console.warn(`    ⚠️ ${e.message.slice(0, 60)}`); }
+          const singleJql = `${baseFilter} AND ${q} AND created >= "2024-01-01" ORDER BY created DESC`;
+          const issues = await fetchWithJQL(singleJql);
+          for (const issue of issues) {
+            if (!seenKeys.has(issue.key)) {
+              seenKeys.add(issue.key);
+              allIssues.push(issue);
+            }
+          }
+        } catch (e) {
+          console.warn(`    ⚠️ Falló: ${e.message.slice(0, 80)}`);
+        }
       }
     }
-    if (i + 3 < tribuQueries.length) await new Promise(r => setTimeout(r, 300));
-  }
-  console.log(`  Subtotal Tribu/Squad: ${allIssues.length}`);
 
-  // ENFOQUE 2: Traer por categoría/ítem de configuración (complementa lo que no tiene Tribu/Squad)
-  console.log('ENFOQUE 2: Consultando por Categoría/Ítem Configuración...');
-  const catJQL = `${baseFilter} AND cf[10409] in cascadeOption("Aplicaciones Fuerza Ventas") AND created >= "2024-01-01" ORDER BY created DESC`;
-  try {
-    const issues = await fetchWithJQL(catJQL);
-    let newCount = 0;
-    for (const issue of issues) {
-      if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); newCount++; }
+    if (i + 3 < additionalQueries.length) {
+      await new Promise(r => setTimeout(r, 300));
     }
-    console.log(`  Aplicaciones Fuerza Ventas: ${issues.length} issues (${newCount} nuevas)`);
-  } catch (err) { console.error(`  ❌ ${err.message.slice(0, 100)}`); }
-
-  const additionalItems = [
-    'SAI', 'SAI WEB', 'SIOS', 'TRONADOR BANCA + MOVILIDAD',
-    'TRONADOR CIA 3 EXCEPTO AUTOS Y SOAT', 'Tronador Contingencia',
-    'Tronador Batch (Cartera, reserva, cierres)', 'ARCGIS',
-    'Planificador Agrícola', 'Obra al día', 'Constructor', 'CONSTRUPLAN',
-    'Cuotas al día', 'Biometría Facial', 'VentaDigitalAutos - IBM', 'VentaSoatDigital - IBM',
-  ];
-  for (let i = 0; i < additionalItems.length; i += 4) {
-    const batch = additionalItems.slice(i, i + 4).map(item => `cf[10409] in cascadeOption("Aplicaciones Empresariales", "${item}")`);
-    const jql = `${baseFilter} AND (${batch.join(' OR ')}) AND created >= "2024-01-01" ORDER BY created DESC`;
-    try {
-      const issues = await fetchWithJQL(jql);
-      let newCount = 0;
-      for (const issue of issues) { if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); newCount++; } }
-      if (newCount > 0) console.log(`  Empresariales lote: +${newCount} nuevas`);
-    } catch (err) { console.warn(`  ⚠️ ${err.message.slice(0, 80)}`); }
-    await new Promise(r => setTimeout(r, 200));
   }
 
-  // Activos Digitales específicos
-  for (const item of ['Jelpit Conjuntos Cuotas al día', 'Jelpit Pymes']) {
-    try {
-      const issues = await fetchWithJQL(`${baseFilter} AND cf[10409] in cascadeOption("Activos Digitales", "${item}") AND created >= "2024-01-01" ORDER BY created DESC`);
-      for (const issue of issues) { if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); } }
-    } catch (e) { /* ignore */ }
-  }
-
-  console.log(`\nTotal único combinado: ${allIssues.length} incidencias.`);
+  console.log(`\nTotal único: ${allIssues.length} incidencias de patrimoniales.`);
   return allIssues;
 }
 
 /** Tribus/Squads a excluir */
-const TRIBUS_EXCLUIDAS = new Set([
-  'ARL', 'COREX', 'Servicio', 'Operaciones y Canales', 'Operaciones', 'Canales',
-  'Servicio, Operaciones y Canales', 'Areas Corporativas', 'Bancaseguros y Negocios Digitales',
-  'Bancaseguros', 'Negocios Digitales', 'Vida', 'Salud', 'Personas',
-]);
-
-/** Tribus de Jira que SÍ son de patrimoniales */
-const TRIBUS_JIRA_VALIDAS = new Set([
-  'Movilidad', 'Vivienda', 'Empresas', 'Arrendamiento',
-  'Copropiedades', 'Hogar', 'Pymes', 'Cumplimiento',
-  'Agro y Transporte', 'Decenal y Maquinaria',
-]);
+const TRIBUS_EXCLUIDAS = new Set(['ARL', 'COREX', 'Servicio', 'Operaciones y Canales', 'Operaciones', 'Canales', 'Servicio, Operaciones y Canales', 'Areas Corporativas', 'Bancaseguros y Negocios Digitales', 'Bancaseguros', 'Negocios Digitales', 'Vida', 'Salud', 'Personas']);
 
 /** Tribus VÁLIDAS de patrimoniales — solo estas se incluyen */
 const TRIBUS_VALIDAS = new Set(['Movilidad', 'Vivienda', 'Empresas', 'Arrendamiento']);
@@ -366,36 +351,22 @@ function transformIssue(issue) {
   if (tribuSquadJira && TRIBUS_EXCLUIDAS.has(tribuSquadJira)) return null;
   if (squadJira && TRIBUS_EXCLUIDAS.has(squadJira)) return null;
 
-  // Si la tribu de Jira está definida, solo incluir si es de patrimoniales
-  // (Ya filtrado por JQL, pero doble verificación)
-  if (tribuSquadJira && !TRIBUS_JIRA_VALIDAS.has(tribuSquadJira)) return null;
-
   // Campo de clasificación detallada (customfield_11219 = "ANALÍTICA - Autos")
   const clasificacionDetallada = fields.customfield_11219?.value || null;
 
-  // Descripción para clasificación más precisa
-  let description = '';
-  if (typeof fields.description === 'string') {
-    description = fields.description;
-  } else if (fields.description && typeof fields.description === 'object') {
-    // ADF format - extraer texto de los nodos
-    description = extractTextFromADF(fields.description);
-  }
-  const textoCompleto = `${fields.summary || ''} ${description}`;
-
-  const clasificacion = clasificar(childValue, parentValue, textoCompleto, tribuSquadJira, squadJira, clasificacionDetallada);
+  const clasificacion = clasificar(childValue, parentValue, fields.summary, tribuSquadJira, squadJira, clasificacionDetallada);
 
   // Si no se pudo clasificar, descartar
   if (!clasificacion) return null;
+
+  // Solo incluir tribus válidas de patrimoniales
+  if (!TRIBUS_VALIDAS.has(clasificacion.tribu) && clasificacion.tribu !== 'Multiproducto') return null;
 
   // Excluir problemas de accesos
   if (clasificacion.producto === '__EXCLUIR_ACCESOS__') return null;
 
   // Excluir Multiproducto (no se puede asignar a un producto específico)
   if (clasificacion.producto === 'Multiproducto' || clasificacion.tribu === 'Multiproducto') return null;
-
-  // Solo incluir tribus válidas de patrimoniales
-  if (!TRIBUS_VALIDAS.has(clasificacion.tribu)) return null;
 
   // Excluir estados cancelados (doble verificación post-query)
   const status = fields.status?.name || '';
@@ -407,7 +378,7 @@ function transformIssue(issue) {
   const itemParent = parentValue || '';
   const summaryText = fields.summary || '';
   const combinedText = `${itemChild} ${itemParent} ${summaryText}`.toLowerCase();
-  if (combinedText.includes('cia 2') || combinedText.includes(' vida ') || combinedText.includes('vida grupo') || combinedText.includes('salud') || combinedText.includes(' arl ') || combinedText.includes(' arl,')) return null;
+  if (combinedText.includes('cia 2') || combinedText.includes('vida') || combinedText.includes('salud') || combinedText.includes('arl')) return null;
 
   const createdDate = fields.created;
   const resolvedDate = fields.resolutiondate || null;
