@@ -166,7 +166,6 @@ function determinarProductoPorSummary(summary) {
   if (s.includes('obra al día') || s.includes('obra al dia')) return { producto: 'Obra al día', tribu: 'Vivienda', squad: 'Copropiedades' };
   if (s.includes('cuotas al día') || s.includes('cuotas al dia') || s.includes('jelpit conjuntos')) return { producto: 'Cuotas al día', tribu: 'Vivienda', squad: 'Copropiedades' };
   if (s.includes('arrendamiento') || s.includes('sai ') || s.includes('libertador')) return { producto: 'Arrendamiento', tribu: 'Arrendamiento', squad: 'Arrendamiento' };
-  if (s.includes('banca') || s.includes('cia 3') || s.includes('tronador banca')) return { producto: 'Autos', tribu: 'Movilidad', squad: 'Movilidad' };
 
   return { producto: 'Multiproducto', tribu: 'Multiproducto', squad: 'Multiproducto' };
 }
@@ -327,7 +326,18 @@ async function fetchAllIncidencias() {
 }
 
 /** Tribus/Squads a excluir */
-const TRIBUS_EXCLUIDAS = new Set(['ARL', 'COREX', 'Servicio', 'Operaciones y Canales', 'Operaciones', 'Canales']);
+const TRIBUS_EXCLUIDAS = new Set([
+  'ARL', 'COREX', 'Servicio', 'Operaciones y Canales', 'Operaciones', 'Canales',
+  'Servicio, Operaciones y Canales', 'Areas Corporativas', 'Bancaseguros y Negocios Digitales',
+  'Bancaseguros', 'Negocios Digitales', 'Vida', 'Salud', 'Personas',
+]);
+
+/** Tribus de Jira que SÍ son de patrimoniales */
+const TRIBUS_JIRA_VALIDAS = new Set([
+  'Movilidad', 'Vivienda', 'Empresas', 'Arrendamiento',
+  'Copropiedades', 'Hogar', 'Pymes', 'Cumplimiento',
+  'Agro y Transporte', 'Decenal y Maquinaria',
+]);
 
 /** Tribus VÁLIDAS de patrimoniales — solo estas se incluyen */
 const TRIBUS_VALIDAS = new Set(['Movilidad', 'Vivienda', 'Empresas', 'Arrendamiento']);
@@ -357,6 +367,9 @@ function transformIssue(issue) {
   // Excluir tribus explícitamente no deseadas
   if (tribuSquadJira && TRIBUS_EXCLUIDAS.has(tribuSquadJira)) return null;
   if (squadJira && TRIBUS_EXCLUIDAS.has(squadJira)) return null;
+
+  // Si la tribu de Jira está definida, solo incluir si es de patrimoniales
+  if (tribuSquadJira && !TRIBUS_JIRA_VALIDAS.has(tribuSquadJira)) return null;
 
   // Campo de clasificación detallada (customfield_11219 = "ANALÍTICA - Autos")
   const clasificacionDetallada = fields.customfield_11219?.value || null;
