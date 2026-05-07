@@ -78,133 +78,74 @@ const ITEMS_PATRIMONIALES = [
 ];
 
 function clasificar(childValue, parentValue, summary, tribuJira, squadJira, clasificacionDetallada) {
-  // 1. PRIMERO: Usar la Tribu de Jira como fuente de verdad para la TRIBU
-  // Si la tribu de Jira es válida, usarla directamente
-  let tribuBase = null;
-  if (tribuJira && TRIBUS_JIRA_VALIDAS.has(tribuJira)) {
-    // Mapear tribu de Jira a tribu del dashboard
-    const tribuMap = {
-      'Movilidad': 'Movilidad',
-      'Vivienda': 'Vivienda',
-      'Empresas': 'Empresas',
-      'Arrendamiento': 'Arrendamiento',
-      'Copropiedades': 'Vivienda',
-      'Hogar': 'Vivienda',
-      'Pymes': 'Empresas',
-      'Cumplimiento': 'Empresas',
-      'Agro y Transporte': 'Empresas',
-      'Decenal y Maquinaria': 'Vivienda',
-    };
-    tribuBase = tribuMap[tribuJira] || null;
-  }
-
-  // 2. Determinar producto usando ítem de configuración + summary + tribu de Jira
-  const producto = determinarProductoConTribu(childValue, summary, tribuJira, squadJira);
-
-  // 3. Si se determinó un producto específico, derivar tribu/squad del producto
-  if (producto && producto !== 'Multiproducto' && producto !== '__EXCLUIR_ACCESOS__') {
-    const tribuSquad = derivarTribuSquadDeProducto(producto);
-    const plataforma = determinarPlataforma(childValue, parentValue, summary);
-    return { producto, tribu: tribuSquad.tribu, squad: tribuSquad.squad, plataforma };
-  }
-
-  // 4. Si es exclusión de accesos
-  if (producto === '__EXCLUIR_ACCESOS__') {
-    return { producto, tribu: '', squad: '', plataforma: '' };
-  }
-
-  // 5. Si no se pudo determinar producto pero tenemos tribu válida, es Multiproducto
-  return { producto: 'Multiproducto', tribu: 'Multiproducto', squad: 'Multiproducto', plataforma: determinarPlataforma(childValue, parentValue, summary) };
-}
-
-/**
- * Determina el producto usando la tribu de Jira como contexto.
- * Si la tribu es "Movilidad", solo asigna Autos/SOAT.
- * Si la tribu es "Empresas", busca Cumplimiento/Pymes/Agro/Transporte.
- */
-function determinarProductoConTribu(childValue, summary, tribuJira, squadJira) {
   const s = (summary || '').toLowerCase();
 
   // Excluir problemas de accesos
   if (s.includes('acceso') || s.includes('control accesos') || s.includes('permisos') || s.includes('contraseña') || s.includes('password') || s.includes('login') || s.includes('usuario bloqueado')) {
-    return '__EXCLUIR_ACCESOS__';
+    return { producto: '__EXCLUIR_ACCESOS__', tribu: '', squad: '', plataforma: '' };
   }
 
-  // 1. Usar ítem de configuración hijo si existe
-  if (childValue) {
-    const match = ITEMS_PATRIMONIALES.find(c => c.item === childValue);
-    if (match && match.producto !== 'Multiproducto') return match.producto;
+  // PASO 1: Revisar campo Tribu/Squad de Jira
+  // PASO 2: Validar con la descripción
+  // Si coinciden → asociar a la tribu de Jira
+  // Si NO coinciden → asociar al producto que identifique en la descripción
+
+  // Identificar producto por texto (summary + descripción)
+  const productoTexto = identificarProductoPorTexto(s);
+
+  // Si se identificó producto en el texto, usarlo (prevalece)
+  if (productoTexto) {
+    const tribuSquad = derivarTribuSquadDeProducto(productoTexto);
+    const plataforma = determinarPlataforma(childValue, parentValue, summary);
+    return { producto: productoTexto, tribu: tribuSquad.tribu, squad: tribuSquad.squad, plataforma };
   }
 
-  // 2. Usar squad de Jira para inferir producto
-  if (squadJira) {
-    const sq = squadJira.toLowerCase();
-    if (sq.includes('movilidad')) {
-      if (s.includes('soat')) return 'SOAT';
-      return 'Autos';
+  // Si NO se identificó producto en texto, usar Tribu/Squad de Jira + squad para inferir
+  if (tribuJira && TRIBUS_JIRA_VALIDAS.has(tribuJira)) {
+    let producto = 'Multiproducto';
+    if (squadJira) {
+      const sq = squadJira.toLowerCase();
+      if (sq.includes('movilidad')) producto = 'Autos';
+      else if (sq.includes('hogar')) producto = 'Hogar';
+      else if (sq.includes('copropiedades')) producto = 'Cuotas al día';
+      else if (sq.includes('pymes')) producto = 'Pymes';
+      else if (sq.includes('cumplimiento')) producto = 'Cumplimiento';
+      else if (sq.includes('agro')) producto = 'Agro';
+      else if (sq.includes('decenal') || sq.includes('maquinaria')) producto = 'Decenal';
+      else if (sq.includes('arrendamiento')) producto = 'Arrendamiento';
+    } else {
+      // Sin squad, usar tribu directamente
+      if (tribuJira === 'Movilidad') producto = 'Autos';
+      else if (tribuJira === 'Arrendamiento') producto = 'Arrendamiento';
     }
-    if (sq.includes('hogar')) return 'Hogar';
-    if (sq.includes('copropiedades')) {
-      if (s.includes('obra al día') || s.includes('obra al dia')) return 'Obra al día';
-      if (s.includes('zonas comunes')) return 'Zonas comunes';
-      return 'Cuotas al día';
+
+    if (producto !== 'Multiproducto') {
+      const tribuSquad = derivarTribuSquadDeProducto(producto);
+      const plataforma = determinarPlataforma(childValue, parentValue, summary);
+      return { producto, tribu: tribuSquad.tribu, squad: tribuSquad.squad, plataforma };
     }
-    if (sq.includes('pymes')) return 'Pymes';
-    if (sq.includes('cumplimiento')) return 'Cumplimiento';
-    if (sq.includes('agro')) {
-      if (s.includes('transporte') || s.includes('prod 40')) return 'Transporte';
-      return 'Agro';
-    }
-    if (sq.includes('decenal') || sq.includes('maquinaria')) {
-      if (s.includes('maquinaria') || s.includes('prod 152') || s.includes('producto 152')) return 'Maquinaria';
-      return 'Decenal';
-    }
-    if (sq.includes('arrendamiento')) return 'Arrendamiento';
   }
 
-  // 3. Usar tribu de Jira + summary para inferir producto
-  if (tribuJira === 'Movilidad') {
-    if (s.includes('soat')) return 'SOAT';
-    return 'Autos';
-  }
-  if (tribuJira === 'Arrendamiento') return 'Arrendamiento';
+  // No se pudo clasificar
+  return { producto: 'Multiproducto', tribu: 'Multiproducto', squad: 'Multiproducto', plataforma: determinarPlataforma(childValue, parentValue, summary) };
+}
 
-  // 4. Para Empresas y Vivienda, usar keywords del summary
-  if (tribuJira === 'Empresas') {
-    if (s.includes('cumplimiento')) return 'Cumplimiento';
-    if (s.includes('pymes') || s.includes('pyme') || s.includes('prod. 778') || s.includes('prod. 777')) return 'Pymes';
-    if (s.includes('agro') || s.includes('agrícola') || s.includes('agricola')) return 'Agro';
-    if (s.includes('transporte') || s.includes('prod 40')) return 'Transporte';
-    if (s.includes('decenal')) return 'Decenal';
-    if (s.includes('maquinaria') || s.includes('prod 152') || s.includes('producto 152')) return 'Maquinaria';
-    return 'Multiproducto'; // No se puede determinar dentro de Empresas
-  }
-  if (tribuJira === 'Vivienda') {
-    if (s.includes('hogar')) return 'Hogar';
-    if (s.includes('obra al día') || s.includes('obra al dia')) return 'Obra al día';
-    if (s.includes('zonas comunes') || s.includes('copropiedades')) return 'Zonas comunes';
-    if (s.includes('cuotas al día') || s.includes('cuotas al dia') || s.includes('jelpit conjuntos')) return 'Cuotas al día';
-    if (s.includes('decenal')) return 'Decenal';
-    if (s.includes('maquinaria') || s.includes('prod 152') || s.includes('producto 152')) return 'Maquinaria';
-    return 'Multiproducto'; // No se puede determinar dentro de Vivienda
-  }
-
-  // 5. Si no hay tribu de Jira, usar solo summary (fallback)
+/** Identifica el producto basándose SOLO en el texto (summary + descripción) */
+function identificarProductoPorTexto(s) {
   if (s.includes('soat')) return 'SOAT';
   if (s.includes('autos') || s.includes('auto ') || s.includes('vehiculo') || s.includes('vehículo')) return 'Autos';
   if (s.includes('hogar')) return 'Hogar';
   if (s.includes('cumplimiento')) return 'Cumplimiento';
-  if (s.includes('pymes') || s.includes('pyme')) return 'Pymes';
+  if (s.includes('pymes') || s.includes('pyme') || s.includes('prod. 778') || s.includes('prod. 777')) return 'Pymes';
   if (s.includes('agro') || s.includes('agrícola') || s.includes('agricola')) return 'Agro';
   if (s.includes('transporte') || s.includes('prod 40')) return 'Transporte';
-  if (s.includes('decenal')) return 'Decenal';
   if (s.includes('maquinaria') || s.includes('prod 152') || s.includes('producto 152')) return 'Maquinaria';
-  if (s.includes('zonas comunes') || s.includes('copropiedades')) return 'Zonas comunes';
+  if (s.includes('decenal')) return 'Decenal';
+  if (s.includes('zonas comunes') || s.includes('copropiedades') || s.includes('copropiedad')) return 'Zonas comunes';
   if (s.includes('obra al día') || s.includes('obra al dia')) return 'Obra al día';
   if (s.includes('cuotas al día') || s.includes('cuotas al dia') || s.includes('jelpit conjuntos')) return 'Cuotas al día';
   if (s.includes('arrendamiento') || s.includes('sai ') || s.includes('libertador')) return 'Arrendamiento';
-
-  return 'Multiproducto';
+  return null; // No se pudo identificar
 }
 
 /** Deriva tribu y squad a partir del producto (fuente de verdad única) */
