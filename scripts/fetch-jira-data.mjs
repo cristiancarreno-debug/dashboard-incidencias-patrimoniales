@@ -21,6 +21,20 @@ if (!JIRA_EMAIL || !JIRA_API_TOKEN) {
 
 const AUTH_HEADER = `Basic ${Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString('base64')}`;
 
+/** Extrae texto plano de un documento ADF (Atlassian Document Format) */
+function extractTextFromADF(adf) {
+  if (!adf) return '';
+  if (typeof adf === 'string') return adf;
+  let text = '';
+  if (adf.text) text += adf.text;
+  if (adf.content && Array.isArray(adf.content)) {
+    for (const node of adf.content) {
+      text += extractTextFromADF(node) + ' ';
+    }
+  }
+  return text;
+}
+
 /** Ítems de configuración específicos de patrimoniales con su clasificación */
 const ITEMS_PATRIMONIALES = [
   { item: 'Análisis de Solicitudes', aplicacion: 'Estudio Digital', producto: 'Arrendamiento', tribu: 'Arrendamiento', squad: 'Arrendamiento' },
@@ -348,7 +362,13 @@ function transformIssue(issue) {
   const clasificacionDetallada = fields.customfield_11219?.value || null;
 
   // Descripción para clasificación más precisa
-  const description = typeof fields.description === 'string' ? fields.description : '';
+  let description = '';
+  if (typeof fields.description === 'string') {
+    description = fields.description;
+  } else if (fields.description && typeof fields.description === 'object') {
+    // ADF format - extraer texto de los nodos
+    description = extractTextFromADF(fields.description);
+  }
   const textoCompleto = `${fields.summary || ''} ${description}`;
 
   const clasificacion = clasificar(childValue, parentValue, textoCompleto, tribuSquadJira, squadJira, clasificacionDetallada);
