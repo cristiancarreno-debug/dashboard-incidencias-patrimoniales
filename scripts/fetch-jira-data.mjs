@@ -231,10 +231,12 @@ async function fetchWithJQL(jql) {
 }
 
 async function fetchAllIncidencias() {
-  // JQL principal: trae TODAS las incidencias donde Tribu/Squad sea de patrimoniales
   const baseFilter = `project = MDSB AND issuetype = Incident AND status != "Cancelado"`;
 
-  // Consultar directamente por el campo Tribu/Squad (cf[27826])
+  const seenKeys = new Set();
+  let allIssues = [];
+
+  // ENFOQUE 1: Traer por campo Tribu/Squad (cf[27826])
   const tribuQueries = [
     `cf[27826] in cascadeOption("Movilidad")`,
     `cf[27826] in cascadeOption("Vivienda")`,
@@ -248,51 +250,69 @@ async function fetchAllIncidencias() {
     `cf[27826] in cascadeOption("Decenal y Maquinaria")`,
   ];
 
-  const seenKeys = new Set();
-  let allIssues = [];
-
-  // Consultar por cada tribu/squad válida
+  console.log('ENFOQUE 1: Consultando por Tribu/Squad...');
   for (let i = 0; i < tribuQueries.length; i += 3) {
     const batch = tribuQueries.slice(i, i + 3);
     const jql = `${baseFilter} AND (${batch.join(' OR ')}) AND created >= "2024-01-01" ORDER BY created DESC`;
+    try {
+      const issues = await fetchWithJQL(jql);
+      for (const issue of issues) {
+        if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); }
+      }
+      console.log(`  Lote ${Math.floor(i / 3) + 1}: ${issues.length} issues (total: ${allIssues.length})`);
+    } catch (err) {
+      console.warn(`  ⚠️ Error: ${err.message.slice(0, 100)}`);
+      for (const q of batch) {
+        try {
+          const issues = await fetchWithJQL(`${baseFilter} AND ${q} AND created >= "2024-01-01" ORDER BY created DESC`);
+          for (const issue of issues) { if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); } }
+        } catch (e) { console.warn(`    ⚠️ ${e.message.slice(0, 60)}`); }
+      }
+    }
+    if (i + 3 < tribuQueries.length) await new Promise(r => setTimeout(r, 300));
+  }
+  console.log(`  Subtotal Tribu/Squad: ${allIssues.length}`);
 
-    console.log(`Consultando lote ${Math.floor(i / 3) + 1}...`);
+  // ENFOQUE 2: Traer por categoría/ítem de configuración (complementa lo que no tiene Tribu/Squad)
+  console.log('ENFOQUE 2: Consultando por Categoría/Ítem Configuración...');
+  const catJQL = `${baseFilter} AND cf[10409] in cascadeOption("Aplicaciones Fuerza Ventas") AND created >= "2024-01-01" ORDER BY created DESC`;
+  try {
+    const issues = await fetchWithJQL(catJQL);
+    let newCount = 0;
+    for (const issue of issues) {
+      if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); newCount++; }
+    }
+    console.log(`  Aplicaciones Fuerza Ventas: ${issues.length} issues (${newCount} nuevas)`);
+  } catch (err) { console.error(`  ❌ ${err.message.slice(0, 100)}`); }
+
+  const additionalItems = [
+    'SAI', 'SAI WEB', 'SIOS', 'TRONADOR BANCA + MOVILIDAD',
+    'TRONADOR CIA 3 EXCEPTO AUTOS Y SOAT', 'Tronador Contingencia',
+    'Tronador Batch (Cartera, reserva, cierres)', 'ARCGIS',
+    'Planificador Agrícola', 'Obra al día', 'Constructor', 'CONSTRUPLAN',
+    'Cuotas al día', 'Biometría Facial', 'VentaDigitalAutos - IBM', 'VentaSoatDigital - IBM',
+  ];
+  for (let i = 0; i < additionalItems.length; i += 4) {
+    const batch = additionalItems.slice(i, i + 4).map(item => `cf[10409] in cascadeOption("Aplicaciones Empresariales", "${item}")`);
+    const jql = `${baseFilter} AND (${batch.join(' OR ')}) AND created >= "2024-01-01" ORDER BY created DESC`;
     try {
       const issues = await fetchWithJQL(jql);
       let newCount = 0;
-      for (const issue of issues) {
-        if (!seenKeys.has(issue.key)) {
-          seenKeys.add(issue.key);
-          allIssues.push(issue);
-          newCount++;
-        }
-      }
-      console.log(`  ${issues.length} issues (${newCount} nuevas, total: ${allIssues.length})`);
-    } catch (err) {
-      console.warn(`  ⚠️ Error: ${err.message.slice(0, 100)}`);
-      // Intentar uno por uno
-      for (const q of batch) {
-        try {
-          const singleJql = `${baseFilter} AND ${q} AND created >= "2024-01-01" ORDER BY created DESC`;
-          const issues = await fetchWithJQL(singleJql);
-          for (const issue of issues) {
-            if (!seenKeys.has(issue.key)) {
-              seenKeys.add(issue.key);
-              allIssues.push(issue);
-            }
-          }
-        } catch (e) {
-          console.warn(`    ⚠️ Falló: ${e.message.slice(0, 80)}`);
-        }
-      }
-    }
-
-    if (i + 3 < tribuQueries.length) {
-      await new Promise(r => setTimeout(r, 300));
-    }
+      for (const issue of issues) { if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); newCount++; } }
+      if (newCount > 0) console.log(`  Empresariales lote: +${newCount} nuevas`);
+    } catch (err) { console.warn(`  ⚠️ ${err.message.slice(0, 80)}`); }
+    await new Promise(r => setTimeout(r, 200));
   }
 
-  console.log(`\nTotal único: ${allIssues.length} incidencias de patrimoniales.`);
+  // Activos Digitales específicos
+  for (const item of ['Jelpit Conjuntos Cuotas al día', 'Jelpit Pymes']) {
+    try {
+      const issues = await fetchWithJQL(`${baseFilter} AND cf[10409] in cascadeOption("Activos Digitales", "${item}") AND created >= "2024-01-01" ORDER BY created DESC`);
+      for (const issue of issues) { if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); } }
+    } catch (e) { /* ignore */ }
+  }
+
+  console.log(`\nTotal único combinado: ${allIssues.length} incidencias.`);
   return allIssues;
 }
 
