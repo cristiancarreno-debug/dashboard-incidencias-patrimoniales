@@ -102,7 +102,7 @@ function mapTribuJira(tribu) {
     'Pymes': 'Empresas',
     'Cumplimiento': 'Empresas',
     'Agro y Transporte': 'Empresas',
-    'Decenal y Maquinaria': 'Empresas',
+    'Decenal y Maquinaria': 'Vivienda',
   };
   return map[tribu] || tribu;
 }
@@ -128,7 +128,12 @@ function determinarProducto(childValue, summary, clasificacionDetallada, tribuJi
     if (sq.includes('pymes')) return 'Pymes';
     if (sq.includes('cumplimiento')) return 'Cumplimiento';
     if (sq.includes('agro')) return 'Agro';
-    if (sq.includes('decenal')) return 'Decenal';
+    if (sq.includes('decenal') || sq.includes('maquinaria')) {
+      // Distinguir entre Decenal y Maquinaria por summary
+      const sumLower = (summary || '').toLowerCase();
+      if (sumLower.includes('maquinaria') || sumLower.includes('prod 152') || sumLower.includes('producto 152')) return 'Maquinaria';
+      return 'Decenal';
+    }
     if (sq.includes('arrendamiento')) return 'Arrendamiento';
   }
 
@@ -153,8 +158,8 @@ function determinarProductoPorSummary(summary) {
   if (s.includes('pymes') || s.includes('pyme') || s.includes('prod. 778') || s.includes('prod. 777')) return { producto: 'Pymes', tribu: 'Empresas', squad: 'Pymes' };
   if (s.includes('agro') || s.includes('agrícola') || s.includes('agricola')) return { producto: 'Agro', tribu: 'Empresas', squad: 'Agro y Transporte' };
   if (s.includes('transporte') || s.includes('prod 40')) return { producto: 'Transporte', tribu: 'Empresas', squad: 'Agro y Transporte' };
-  if (s.includes('decenal')) return { producto: 'Decenal', tribu: 'Empresas', squad: 'Decenal y Maquinaria' };
-  if (s.includes('maquinaria')) return { producto: 'Maquinaria', tribu: 'Empresas', squad: 'Decenal y Maquinaria' };
+  if (s.includes('decenal')) return { producto: 'Decenal', tribu: 'Vivienda', squad: 'Decenal y Maquinaria' };
+  if (s.includes('maquinaria') || s.includes('prod 152') || s.includes('producto 152')) return { producto: 'Maquinaria', tribu: 'Vivienda', squad: 'Decenal y Maquinaria' };
   if (s.includes('zonas comunes') || s.includes('copropiedades') || s.includes('copropiedad')) return { producto: 'Zonas comunes', tribu: 'Vivienda', squad: 'Copropiedades' };
   if (s.includes('obra al día') || s.includes('obra al dia')) return { producto: 'Obra al día', tribu: 'Vivienda', squad: 'Copropiedades' };
   if (s.includes('cuotas al día') || s.includes('cuotas al dia') || s.includes('jelpit conjuntos')) return { producto: 'Cuotas al día', tribu: 'Vivienda', squad: 'Copropiedades' };
