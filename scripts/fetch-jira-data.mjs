@@ -231,61 +231,34 @@ async function fetchWithJQL(jql) {
 }
 
 async function fetchAllIncidencias() {
-  // JQL principal: trae TODAS las incidencias de las categorías padre de patrimoniales
-  // Excluye: estado Cancelado
+  // JQL principal: trae TODAS las incidencias donde Tribu/Squad sea de patrimoniales
   const baseFilter = `project = MDSB AND issuetype = Incident AND status != "Cancelado"`;
 
-  const mainJQL = `${baseFilter} AND cf[10409] in cascadeOption("Aplicaciones Fuerza Ventas") AND created >= "2024-01-01" ORDER BY created DESC`;
-
-  // JQLs adicionales para ítems específicos bajo otras categorías
-  const additionalQueries = [
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "SAI")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "SAI WEB")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "SIOS")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "TRONADOR BANCA + MOVILIDAD")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "TRONADOR CIA 3 EXCEPTO AUTOS Y SOAT")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Tronador Contingencia")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Tronador Batch (Cartera, reserva, cierres)")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "ARCGIS")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Planificador Agrícola")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Obra al día")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Constructor")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "CONSTRUPLAN")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Cuotas al día")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "Biometría Facial")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "VentaDigitalAutos - IBM")`,
-    `cf[10409] in cascadeOption("Aplicaciones Empresariales", "VentaSoatDigital - IBM")`,
-    `cf[10409] in cascadeOption("Activos Digitales", "Jelpit Conjuntos Cuotas al día")`,
-    `cf[10409] in cascadeOption("Activos Digitales", "Jelpit Pymes")`,
-    `cf[10409] in cascadeOption("IA", "Análisis de Solicitudes")`,
+  // Consultar directamente por el campo Tribu/Squad (cf[27826])
+  const tribuQueries = [
+    `cf[27826] in cascadeOption("Movilidad")`,
+    `cf[27826] in cascadeOption("Vivienda")`,
+    `cf[27826] in cascadeOption("Empresas")`,
+    `cf[27826] in cascadeOption("Arrendamiento")`,
+    `cf[27826] in cascadeOption("Copropiedades")`,
+    `cf[27826] in cascadeOption("Hogar")`,
+    `cf[27826] in cascadeOption("Pymes")`,
+    `cf[27826] in cascadeOption("Cumplimiento")`,
+    `cf[27826] in cascadeOption("Agro y Transporte")`,
+    `cf[27826] in cascadeOption("Decenal y Maquinaria")`,
   ];
 
   const seenKeys = new Set();
   let allIssues = [];
 
-  // 1. Traer todas las de "Aplicaciones Fuerza Ventas" (la mayoría)
-  console.log('Consultando Aplicaciones Fuerza Ventas (principal)...');
-  try {
-    const issues = await fetchWithJQL(mainJQL);
-    for (const issue of issues) {
-      if (!seenKeys.has(issue.key)) {
-        seenKeys.add(issue.key);
-        allIssues.push(issue);
-      }
-    }
-    console.log(`  Principal: ${issues.length} issues`);
-  } catch (err) {
-    console.error(`  ❌ Error en query principal: ${err.message}`);
-  }
+  // Consultar por cada tribu/squad válida
+  for (let i = 0; i < tribuQueries.length; i += 3) {
+    const batch = tribuQueries.slice(i, i + 3);
+    const jql = `${baseFilter} AND (${batch.join(' OR ')}) AND created >= "2024-01-01" ORDER BY created DESC`;
 
-  // 2. Traer las adicionales (Empresariales, Activos Digitales, IA)
-  console.log('Consultando categorías adicionales...');
-  for (let i = 0; i < additionalQueries.length; i += 3) {
-    const batch = additionalQueries.slice(i, i + 3);
-    const combinedJql = `${baseFilter} AND (${batch.join(' OR ')}) AND created >= "2024-01-01" ORDER BY created DESC`;
-
+    console.log(`Consultando lote ${Math.floor(i / 3) + 1}...`);
     try {
-      const issues = await fetchWithJQL(combinedJql);
+      const issues = await fetchWithJQL(jql);
       let newCount = 0;
       for (const issue of issues) {
         if (!seenKeys.has(issue.key)) {
@@ -294,9 +267,9 @@ async function fetchAllIncidencias() {
           newCount++;
         }
       }
-      console.log(`  Lote ${Math.floor(i / 3) + 1}: ${issues.length} issues (${newCount} nuevas)`);
+      console.log(`  ${issues.length} issues (${newCount} nuevas, total: ${allIssues.length})`);
     } catch (err) {
-      console.warn(`  ⚠️ Error en lote: ${err.message.slice(0, 100)}`);
+      console.warn(`  ⚠️ Error: ${err.message.slice(0, 100)}`);
       // Intentar uno por uno
       for (const q of batch) {
         try {
@@ -314,7 +287,7 @@ async function fetchAllIncidencias() {
       }
     }
 
-    if (i + 3 < additionalQueries.length) {
+    if (i + 3 < tribuQueries.length) {
       await new Promise(r => setTimeout(r, 300));
     }
   }
@@ -367,6 +340,7 @@ function transformIssue(issue) {
   if (squadJira && TRIBUS_EXCLUIDAS.has(squadJira)) return null;
 
   // Si la tribu de Jira está definida, solo incluir si es de patrimoniales
+  // (Ya filtrado por JQL, pero doble verificación)
   if (tribuSquadJira && !TRIBUS_JIRA_VALIDAS.has(tribuSquadJira)) return null;
 
   // Campo de clasificación detallada (customfield_11219 = "ANALÍTICA - Autos")
