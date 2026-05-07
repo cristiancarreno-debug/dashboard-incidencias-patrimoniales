@@ -56,15 +56,21 @@ export function AnnualTable({ data, filtros }: Props) {
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-lg">{row.totalCreadas}</span>
                   {/* Variación 2025 vs 2024 */}
-                  {row.anio === 2025 && variacion2025vs2024 !== null && (
-                    <span className={`text-sm font-bold ${
-                      Math.abs(variacion2025vs2024) >= 50 ? 'text-green-600' :
-                      Math.abs(variacion2025vs2024) >= 30 ? 'text-orange-500' :
-                      'text-red-600'
-                    }`}>
-                      {variacion2025vs2024 > 0 ? '↑' : '↓'} {Math.abs(variacion2025vs2024)}%
-                    </span>
-                  )}
+                  {row.anio === 2025 && variacion2025vs2024 !== null && (() => {
+                    // Lógica: se espera DISMINUCIÓN año a año
+                    // variacion2025vs2024 es negativo si disminuyó, positivo si aumentó
+                    // disminución = valor negativo (ej: -14% significa que bajó 14%)
+                    const disminucion = -variacion2025vs2024; // positivo si bajó, negativo si subió
+                    const color = disminucion >= 50 ? 'text-green-600' :
+                                  disminucion >= 30 ? 'text-orange-500' :
+                                  'text-red-600';
+                    const flecha = variacion2025vs2024 > 0 ? '↑' : '↓';
+                    return (
+                      <span className={`text-sm font-bold ${color}`}>
+                        {flecha} {Math.abs(variacion2025vs2024)}%
+                      </span>
+                    );
+                  })()}
                   {/* Meta 2026 */}
                   {row.anio === 2026 && meta2026 !== null && (
                     <span className={`text-sm font-bold ${row.totalCreadas <= meta2026 ? 'text-green-600' : 'text-red-600'}`}>
