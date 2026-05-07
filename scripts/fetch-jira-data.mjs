@@ -117,6 +117,13 @@ function clasificar(childValue, parentValue, summary, tribuJira, squadJira, clas
       // Sin squad, usar tribu directamente
       if (tribuJira === 'Movilidad') producto = 'Autos';
       else if (tribuJira === 'Arrendamiento') producto = 'Arrendamiento';
+      else if (tribuJira === 'Vivienda' || tribuJira === 'Copropiedades') producto = 'Cuotas al día';
+      else if (tribuJira === 'Hogar') producto = 'Hogar';
+      else if (tribuJira === 'Empresas') producto = 'Pymes';
+      else if (tribuJira === 'Pymes') producto = 'Pymes';
+      else if (tribuJira === 'Cumplimiento') producto = 'Cumplimiento';
+      else if (tribuJira === 'Agro y Transporte') producto = 'Agro';
+      else if (tribuJira === 'Decenal y Maquinaria') producto = 'Decenal';
     }
 
     if (producto !== 'Multiproducto') {
@@ -133,7 +140,7 @@ function clasificar(childValue, parentValue, summary, tribuJira, squadJira, clas
 /** Identifica el producto basándose SOLO en el texto (summary + descripción) */
 function identificarProductoPorTexto(s) {
   if (s.includes('soat')) return 'SOAT';
-  if (s.includes('autos') || s.includes('auto ') || s.includes('vehiculo') || s.includes('vehículo')) return 'Autos';
+  if (s.includes('autos') || s.includes('auto ') || s.includes('vehiculo') || s.includes('vehículo') || s.includes('tronador banca') || s.includes('banca + movilidad')) return 'Autos';
   if (s.includes('hogar')) return 'Hogar';
   if (s.includes('cumplimiento')) return 'Cumplimiento';
   if (s.includes('pymes') || s.includes('pyme') || s.includes('prod. 778') || s.includes('prod. 777')) return 'Pymes';
