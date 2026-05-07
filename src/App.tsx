@@ -41,7 +41,7 @@ function App() {
     limpiarFiltros,
   } = useFilters(allIncidencias);
 
-  const metrics = useMetrics(incidenciasFiltradas);
+  const metrics = useMetrics(incidenciasFiltradas, filtros.fechaDesde, filtros.fechaHasta);
 
   const incidenciasAbiertas = incidenciasFiltradas.filter(
     i => !['Cerrado', 'Resuelto'].includes(i.status)

@@ -7,7 +7,7 @@ function esTerminal(status: string): boolean {
   return ESTADOS_TERMINALES.some(t => status.toLowerCase().includes(t.toLowerCase()));
 }
 
-export function useMetrics(incidencias: IncidenciaClasificada[]) {
+export function useMetrics(incidencias: IncidenciaClasificada[], fechaDesde?: string, fechaHasta?: string) {
   const totalGeneradas = incidencias.length;
   const totalResueltas = incidencias.filter(i => esTerminal(i.status)).length;
   const totalAbiertas = totalGeneradas - totalResueltas;
@@ -17,10 +17,23 @@ export function useMetrics(incidencias: IncidenciaClasificada[]) {
 
     const mesesMap = new Map<string, { abiertas: number; cerradas: number }>();
 
-    // Determinar rango completo de meses
-    const fechas = incidencias.map(i => i.createdDate.slice(0, 7));
-    const minMes = fechas.reduce((a, b) => a < b ? a : b);
-    const maxMes = fechas.reduce((a, b) => a > b ? a : b);
+    // Determinar rango de meses: usar filtro de fechas si existe, sino usar datos
+    let minMes: string;
+    let maxMes: string;
+
+    if (fechaDesde) {
+      minMes = fechaDesde.slice(0, 7);
+    } else {
+      const fechas = incidencias.map(i => i.createdDate.slice(0, 7));
+      minMes = fechas.reduce((a, b) => a < b ? a : b);
+    }
+
+    if (fechaHasta) {
+      maxMes = fechaHasta.slice(0, 7);
+    } else {
+      const fechas = incidencias.map(i => i.createdDate.slice(0, 7));
+      maxMes = fechas.reduce((a, b) => a > b ? a : b);
+    }
 
     // Generar todos los meses del rango (incluyendo vacíos)
     const [startY, startM] = minMes.split('-').map(Number);
@@ -56,7 +69,7 @@ export function useMetrics(incidencias: IncidenciaClasificada[]) {
       acumulado += data.abiertas - data.cerradas;
       return { mes, abiertas: data.abiertas, cerradas: data.cerradas, pendientes: Math.max(0, acumulado) };
     });
-  }, [incidencias]);
+  }, [incidencias, fechaDesde, fechaHasta]);
 
   const metricasAnuales = useMemo((): MetricaAnual[] => {
     const currentYear = new Date().getFullYear();
