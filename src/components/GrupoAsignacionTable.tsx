@@ -29,15 +29,13 @@ export function GrupoAsignacionTable({ incidencias }: Props) {
             <tr key={g.grupo} className="border-b border-slate-100">
               <td className="py-1.5 text-slate-500 w-6">{i + 1}</td>
               <td className="py-1.5 text-slate-700">{g.grupo}</td>
-              <td className="py-1.5 text-blue-600 text-right font-medium">{g.cantidad}</td>
-              <td className="py-1.5 text-blue-800 text-right font-bold w-10">{g.cantidad}</td>
+              <td className="py-1.5 text-blue-800 text-right font-bold">{g.cantidad}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-slate-300">
             <td colSpan={2} className="py-2 font-bold text-blue-700">Total (Issues)</td>
-            <td className="py-2 text-blue-600 text-right font-bold">{total}</td>
             <td className="py-2 text-blue-800 text-right font-bold">{total}</td>
           </tr>
         </tfoot>
