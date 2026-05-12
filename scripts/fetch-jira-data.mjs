@@ -109,6 +109,11 @@ function clasificar(issue) {
   const status = fields.status?.name || '';
   if (status.toLowerCase() === 'cancelado' || status.toLowerCase() === 'cancelada') return null;
 
+  // Filtrar por Grupo Asignación: solo incluir valores válidos
+  const GRUPOS_VALIDOS = new Set(['Tribu de Desarrollo', 'Especialistas N1', 'Analítica', 'Mesa Soporte Tecnológico Validaciones']);
+  const grupoAsignacion = fields.customfield_10439?.value || null;
+  if (grupoAsignacion && !GRUPOS_VALIDOS.has(grupoAsignacion)) return null;
+
   // Si Tribu/Squad de Jira está llena pero NO es válida → excluir
   if (tribuJira && !TRIBUS_JIRA_VALIDAS.has(tribuJira)) return null;
 
@@ -257,7 +262,7 @@ function jiraRequest(urlPath) {
 }
 
 async function fetchWithJQL(jql) {
-  const fields = 'summary,status,assignee,created,resolutiondate,customfield_10409,customfield_27826,description';
+  const fields = 'summary,status,assignee,created,resolutiondate,customfield_10409,customfield_27826,description,customfield_10439';
   const maxResults = 100;
   let allIssues = [];
   let nextPageToken = null;
