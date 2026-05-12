@@ -19,8 +19,13 @@ export function IncidenciasTable({ incidencias }: Props) {
   const sorted = [...incidencias].sort((a, b) => {
     const aVal = a[sortKey] ?? '';
     const bVal = b[sortKey] ?? '';
-    if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+    }
+    const aStr = String(aVal);
+    const bStr = String(bVal);
+    if (aStr < bStr) return sortDir === 'asc' ? -1 : 1;
+    if (aStr > bStr) return sortDir === 'asc' ? 1 : -1;
     return 0;
   });
 

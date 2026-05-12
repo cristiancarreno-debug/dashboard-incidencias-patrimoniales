@@ -49,7 +49,7 @@ function App() {
   );
 
   const incidencias2026 = incidenciasFiltradas.filter(
-    i => new Date(i.createdDate).getFullYear() === 2026
+    i => i.createdDate && new Date(i.createdDate).getFullYear() === 2026
   );
 
   if (loading) {
