@@ -6,6 +6,7 @@ import { SummaryCounters } from './components/SummaryCounters';
 import { FilterBar } from './components/FilterBar';
 import { MonthlyChart } from './components/MonthlyChart';
 import { AnnualTable } from './components/AnnualTable';
+import { GrupoAsignacionTable } from './components/GrupoAsignacionTable';
 import { PlatformPie } from './components/PlatformPie';
 import { ResolutionPie } from './components/ResolutionPie';
 import { IncidenciasTable } from './components/IncidenciasTable';
@@ -124,13 +125,18 @@ function App() {
           <MonthlyChart data={metrics.metricasMensuales} />
         </section>
 
-        {/* Tabla comparativa anual */}
-        <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-slate-700 mb-4">
-            Comparativa Anual
-          </h2>
-          <AnnualTable data={metrics.metricasAnuales} filtros={filtros} />
-        </section>
+        {/* Tabla comparativa anual + Grupo Asignación */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="bg-white rounded-lg shadow p-6 lg:col-span-2">
+            <h2 className="text-lg font-semibold text-slate-700 mb-4">
+              Comparativa Anual
+            </h2>
+            <AnnualTable data={metrics.metricasAnuales} filtros={filtros} />
+          </section>
+          <section className="bg-white rounded-lg shadow p-6">
+            <GrupoAsignacionTable incidencias={incidenciasFiltradas} />
+          </section>
+        </div>
 
         {/* Gráficos de plataforma */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

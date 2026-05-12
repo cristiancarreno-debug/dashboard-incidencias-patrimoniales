@@ -132,6 +132,7 @@ function clasificar(issue) {
       assignee: fields.assignee?.displayName || null,
       createdDate: fields.created, resolvedDate: fields.resolutiondate || null,
       producto, tribu: tribuSquad.tribu, squad: tribuSquad.squad, plataforma,
+      grupoAsignacion: fields.customfield_10439?.value || 'Sin asignar',
       jiraUrl: `${JIRA_BASE_URL}/browse/${issue.key}`,
     };
   }
@@ -150,6 +151,7 @@ function clasificar(issue) {
         assignee: fields.assignee?.displayName || null,
         createdDate: fields.created, resolvedDate: fields.resolutiondate || null,
         producto, tribu: tribuSquad.tribu, squad: tribuSquad.squad, plataforma,
+        grupoAsignacion: fields.customfield_10439?.value || 'Sin asignar',
         jiraUrl: `${JIRA_BASE_URL}/browse/${issue.key}`,
       };
     }

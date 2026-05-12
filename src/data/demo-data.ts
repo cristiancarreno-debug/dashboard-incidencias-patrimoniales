@@ -72,6 +72,7 @@ function generarIncidencias(): IncidenciaClasificada[] {
         edadDias: edad,
         rangoResolucion: resolved ? calcularRango(edad) : null,
         jiraUrl: `https://jirasegurosbolivar.atlassian.net/browse/MDSB-${1000000 + counter}`,
+        grupoAsignacion: 'Tribu de Desarrollo',
       });
     }
   }

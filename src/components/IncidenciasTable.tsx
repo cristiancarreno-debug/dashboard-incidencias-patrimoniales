@@ -9,7 +9,7 @@ interface Props {
 type SortKey = 'key' | 'status' | 'squad' | 'producto' | 'assignee' | 'edadDias' | 'createdDate';
 type SortDir = 'asc' | 'desc';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 10;
 
 export function IncidenciasTable({ incidencias }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('edadDias');

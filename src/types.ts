@@ -37,6 +37,7 @@ export interface IncidenciaClasificada {
   plataforma: string;
   edadDias: number;
   rangoResolucion: RangoResolucion | null;
+  grupoAsignacion: string;
   jiraUrl: string;
 }
 
