@@ -138,8 +138,9 @@ function clasificar(issue) {
   if (tribuJira && TRIBUS_JIRA_VALIDAS.has(tribuJira)) {
     const tribu = TRIBU_MAP[tribuJira] || tribuJira;
 
-    // Determinar producto DENTRO de la tribu (keywords restringidos al contexto de la tribu)
-    const producto = determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description);
+    // Determinar producto DENTRO de la tribu (keywords + ítem configuración)
+    const itemConfig = fields.customfield_10409?.child?.value || fields.customfield_10409?.value || '';
+    const producto = determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description, itemConfig);
     const tribuSquad = derivarTribuSquad(producto);
     const plataforma = determinarPlataforma(summary);
 
@@ -195,8 +196,8 @@ function clasificar(issue) {
  * Determina el producto DENTRO de una tribu específica.
  * Solo busca keywords relevantes para esa tribu.
  */
-function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description) {
-  const texto = `${summary} ${description}`.toLowerCase();
+function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description, itemConfig) {
+  const texto = `${summary} ${description} ${itemConfig}`.toLowerCase();
 
   // Primero usar squad de Jira si está disponible
   if (squadJira) {
