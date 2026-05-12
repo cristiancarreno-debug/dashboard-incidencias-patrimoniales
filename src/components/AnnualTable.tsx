@@ -37,22 +37,22 @@ export function AnnualTable({ data, filtros }: Props) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="text-sm">
+      <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-100 text-left">
-            <th className="px-3 py-2 font-medium text-slate-600">Año</th>
-            <th className="px-3 py-2 font-medium text-slate-600">Creadas</th>
-            <th className="px-3 py-2 font-medium text-slate-600">Cerradas</th>
-            <th className="px-3 py-2 font-medium text-slate-600">% Cierre</th>
-            <th className="px-3 py-2 font-medium text-slate-600">Prom. Días</th>
-            <th className="px-3 py-2 font-medium text-slate-600">Más Antigua</th>
+            <th className="px-4 py-2 font-medium text-slate-600">Año</th>
+            <th className="px-4 py-2 font-medium text-slate-600">Creadas</th>
+            <th className="px-4 py-2 font-medium text-slate-600">Cerradas</th>
+            <th className="px-4 py-2 font-medium text-slate-600">% Cierre</th>
+            <th className="px-4 py-2 font-medium text-slate-600">Prom. Días</th>
+            <th className="px-4 py-2 font-medium text-slate-600">Más Antigua</th>
           </tr>
         </thead>
         <tbody>
           {data.map((row) => (
             <tr key={row.anio} className="border-b border-slate-100 hover:bg-slate-50">
-              <td className="px-3 py-2 font-semibold">{row.anio}</td>
-              <td className="px-3 py-2">
+              <td className="px-4 py-3 font-semibold">{row.anio}</td>
+              <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{row.totalCreadas}</span>
                   {/* Variación 2025 vs 2024 */}
@@ -79,14 +79,14 @@ export function AnnualTable({ data, filtros }: Props) {
                   )}
                 </div>
               </td>
-              <td className="px-3 py-2 font-semibold">{row.totalCerradas}</td>
-              <td className="px-3 py-2">
+              <td className="px-4 py-3 font-semibold">{row.totalCerradas}</td>
+              <td className="px-4 py-3">
                 <span className={row.porcentajeCierre >= 80 ? 'text-green-600 font-semibold' : row.porcentajeCierre >= 60 ? 'text-amber-600 font-semibold' : 'text-red-600 font-semibold'}>
                   {row.porcentajeCierre.toFixed(0)}%
                 </span>
               </td>
-              <td className="px-3 py-2">{row.promedioDiasAtencion.toFixed(1)}</td>
-              <td className="px-3 py-2">{row.incidenciaMasAntigua}</td>
+              <td className="px-4 py-3">{row.promedioDiasAtencion.toFixed(1)}</td>
+              <td className="px-4 py-3">{row.incidenciaMasAntigua}</td>
             </tr>
           ))}
         </tbody>

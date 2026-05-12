@@ -126,14 +126,14 @@ function App() {
         </section>
 
         {/* Tabla comparativa anual + Grupo Asignación */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="bg-white rounded-lg shadow p-6 lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <section className="bg-white rounded-lg shadow p-6 lg:col-span-3">
             <h2 className="text-lg font-semibold text-slate-700 mb-4">
               Comparativa Anual
             </h2>
             <AnnualTable data={metrics.metricasAnuales} filtros={filtros} />
           </section>
-          <section className="bg-white rounded-lg shadow p-6">
+          <section className="bg-white rounded-lg shadow p-6 lg:col-span-2">
             <GrupoAsignacionTable incidencias={incidenciasFiltradas} />
           </section>
         </div>
