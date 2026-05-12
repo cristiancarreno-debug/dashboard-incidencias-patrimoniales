@@ -38,7 +38,7 @@ const TRIBU_MAP = {
 
 /** Producto por defecto según tribu/squad de Jira */
 const PRODUCTO_DEFAULT = {
-  'Movilidad': 'Autos', 'Vivienda': 'Hogar', 'Empresas': 'Pymes',
+  'Movilidad': 'Autos', 'Vivienda': 'Hogar', 'Empresas': 'Cumplimiento',
   'Arrendamiento': 'Arrendamiento', 'Copropiedades': 'Cuotas al día',
   'Hogar': 'Hogar', 'Pymes': 'Pymes', 'Cumplimiento': 'Cumplimiento',
   'Agro y Transporte': 'Agro', 'Decenal y Maquinaria': 'Decenal',
@@ -67,14 +67,30 @@ function derivarTribuSquad(producto) {
 /** Determina plataforma */
 function determinarPlataforma(summary) {
   const s = (summary || '').toLowerCase();
-  if (s.includes('tronador')) return 'Tronador';
+  if (s.includes('tronador banca') || s.includes('banca + movilidad')) return 'Tronador Banca';
+  if (s.includes('tronador cia 3') || s.includes('tronador contingencia')) return 'Tronador CIA 3';
+  if (s.includes('tronador batch') || s.includes('tronador')) return 'Tronador';
+  if (s.includes('simon web emision') || s.includes('simon web ventas') || s.includes('simon web reaseguros') || s.includes('simon web siniestros') || s.includes('simon web cia')) return 'Simon WEB';
+  if (s.includes('simon') && (s.includes('cotizador') || s.includes('cotizadores'))) return 'Simon Cotizadores';
+  if (s.includes('simon - soat') || s.includes('simon-soat') || s.includes('simon soat')) return 'Simon Cotizadores';
+  if (s.includes('simon - cumplimiento') || s.includes('simon-cumplimiento')) return 'Simon Cotizadores';
   if (s.includes('simon web')) return 'Simon WEB';
-  if (s.includes('simon') && s.includes('cotizador')) return 'Simon Cotizadores';
   if (s.includes('simon')) return 'Simon Cotizadores';
-  if (s.includes('jelpit')) return 'Jelpit Conjuntos';
-  if (s.includes('sai')) return 'SAI';
+  if (s.includes('sai web') || s.includes('sai ')) return 'SAI';
+  if (s.includes('sios')) return 'SIOS';
   if (s.includes('arcgis')) return 'Arcgis';
-  return 'Otros';
+  if (s.includes('jelpit')) return 'Jelpit Conjuntos';
+  if (s.includes('obra al día') || s.includes('obra al dia')) return 'Obra al día';
+  if (s.includes('construplan') || s.includes('constructor')) return 'Plataforma Constructor';
+  if (s.includes('planificador agr')) return 'Plataforma Agro';
+  if (s.includes('poliza digital') || s.includes('póliza digital')) return 'Póliza Digital';
+  if (s.includes('biometría') || s.includes('biometria')) return 'Biometría Facial';
+  if (s.includes('datamart') || s.includes('libertador')) return 'Datamart';
+  if (s.includes('recaudo') || s.includes('pago en línea') || s.includes('pago en linea')) return 'Portal de Pagos';
+  if (s.includes('comisiones')) return 'Comisiones';
+  if (s.includes('facturación') || s.includes('facturacion') || s.includes('renovación') || s.includes('renovacion')) return 'Tronador';
+  if (s.includes('reaseguro')) return 'Tronador';
+  return 'Tronador'; // Default: la mayoría de incidencias genéricas son de Tronador
 }
 
 /** Extrae texto de ADF */
@@ -140,8 +156,8 @@ function clasificar(issue) {
   // CASO 2: Tribu/Squad vacía → fallback por keywords en TODOS los campos
   const textoCompleto = `${summary} ${description}`.toLowerCase();
 
-  // Para 2024: usar keywords de confianza media (más amplio)
-  if (anioCreacion <= 2024) {
+  // Para 2024 y 2025: usar keywords de confianza media (más amplio)
+  if (anioCreacion <= 2025) {
     const producto = identificarProductoConfianzaMedia(textoCompleto);
     if (producto) {
       const tribuSquad = derivarTribuSquad(producto);
@@ -229,7 +245,7 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
     if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
     if (texto.includes('decenal')) return 'Decenal';
     if (texto.includes('maquinaria') || texto.includes('prod 152')) return 'Maquinaria';
-    return 'Pymes'; // Default para Empresas
+    return 'Cumplimiento'; // Default para Empresas sin squad (más común)
   }
 
   return PRODUCTO_DEFAULT[tribuJira] || 'Autos';
@@ -388,7 +404,13 @@ async function fetchAllIncidencias() {
 async function main() {
   try {
     const rawIssues = await fetchAllIncidencias();
-    const incidencias = rawIssues.map(clasificar).filter(Boolean);
+    const incidencias = rawIssues.map(clasificar).filter(Boolean).filter(inc => {
+      // Excluir Jelpit Conjuntos
+      if (inc.plataforma === 'Jelpit Conjuntos') return false;
+      // SAI solo para Arrendamiento
+      if (inc.plataforma === 'SAI' && inc.producto !== 'Arrendamiento') return false;
+      return true;
+    });
 
     // Calcular edad
     const now = new Date();
