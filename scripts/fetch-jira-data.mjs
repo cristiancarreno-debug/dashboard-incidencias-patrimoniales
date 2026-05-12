@@ -64,25 +64,6 @@ function derivarTribuSquad(producto) {
   return map[producto] || { tribu: 'Movilidad', squad: 'Movilidad' };
 }
 
-/** Intenta identificar producto específico por keywords en el texto */
-function identificarProducto(texto) {
-  const s = texto.toLowerCase();
-  if (s.includes('soat')) return 'SOAT';
-  if (s.includes('autos') || s.includes('auto ') || s.includes('cotizadores autos') || s.includes('tronador banca') || s.includes('banca + movilidad')) return 'Autos';
-  if (s.includes('hogar')) return 'Hogar';
-  if (s.includes('cumplimiento')) return 'Cumplimiento';
-  if (s.includes('pymes') || s.includes('pyme')) return 'Pymes';
-  if (s.includes('agro') || s.includes('agrícola')) return 'Agro';
-  if (s.includes('transporte') || s.includes('prod 40')) return 'Transporte';
-  if (s.includes('maquinaria') || s.includes('prod 152') || s.includes('producto 152')) return 'Maquinaria';
-  if (s.includes('decenal')) return 'Decenal';
-  if (s.includes('zonas comunes') || s.includes('copropiedades')) return 'Zonas comunes';
-  if (s.includes('obra al día') || s.includes('obra al dia')) return 'Obra al día';
-  if (s.includes('cuotas al día') || s.includes('cuotas al dia') || s.includes('jelpit conjuntos')) return 'Cuotas al día';
-  if (s.includes('arrendamiento') || s.includes('sai ') || s.includes('libertador')) return 'Arrendamiento';
-  return null;
-}
-
 /** Determina plataforma */
 function determinarPlataforma(summary) {
   const s = (summary || '').toLowerCase();
@@ -110,9 +91,10 @@ function extractTextFromADF(adf) {
 
 /**
  * CLASIFICACIÓN:
- * 1. Si Tribu/Squad de Jira es válida → SIEMPRE incluir, usar keywords solo para producto específico
- * 2. Si Tribu/Squad vacía → usar keywords para determinar producto y tribu (fallback)
- * 3. Si no se puede clasificar → excluir
+ * 1. Si Tribu/Squad de Jira es válida → SIEMPRE usar esa tribu. Keywords SOLO para producto DENTRO de la tribu.
+ * 2. Si Tribu/Squad vacía → fallback por keywords en summary + descripción + comentarios
+ * 3. Si Tribu/Squad no válida (COREX, etc.) → excluir
+ * 4. Si no se puede clasificar → excluir
  */
 function clasificar(issue) {
   const fields = issue.fields;
@@ -122,48 +104,35 @@ function clasificar(issue) {
   let description = '';
   if (typeof fields.description === 'string') description = fields.description;
   else if (fields.description && typeof fields.description === 'object') description = extractTextFromADF(fields.description);
-  const texto = `${summary} ${description}`;
 
   // Estado cancelado → excluir
   const status = fields.status?.name || '';
   if (status.toLowerCase() === 'cancelado' || status.toLowerCase() === 'cancelada') return null;
 
   // Si Tribu/Squad de Jira está llena pero NO es válida → excluir
-  const TRIBUS_EXCLUIDAS = ['ARL', 'COREX', 'Servicio', 'Operaciones y Canales', 'Operaciones', 'Canales', 'Servicio, Operaciones y Canales', 'Areas Corporativas', 'Bancaseguros y Negocios Digitales', 'Bancaseguros', 'Negocios Digitales', 'Vida', 'Salud', 'Personas'];
   if (tribuJira && !TRIBUS_JIRA_VALIDAS.has(tribuJira)) return null;
 
-  // CASO 1: Tribu/Squad de Jira está llena y es válida → SIEMPRE incluir
+  // CASO 1: Tribu/Squad de Jira es válida → usar SOLO la tribu de Jira
   if (tribuJira && TRIBUS_JIRA_VALIDAS.has(tribuJira)) {
     const tribu = TRIBU_MAP[tribuJira] || tribuJira;
 
-    // Intentar determinar producto específico por keywords
-    let producto = identificarProducto(texto);
-
-    // Si no se encontró producto por keywords, usar producto por defecto de la tribu/squad
-    if (!producto) {
-      producto = PRODUCTO_DEFAULT[squadJira] || PRODUCTO_DEFAULT[tribuJira] || 'Autos';
-    }
-
+    // Determinar producto DENTRO de la tribu (keywords restringidos al contexto de la tribu)
+    const producto = determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description);
     const tribuSquad = derivarTribuSquad(producto);
     const plataforma = determinarPlataforma(summary);
 
     return {
-      key: issue.key,
-      summary,
-      status: status,
+      key: issue.key, summary, status,
       assignee: fields.assignee?.displayName || null,
-      createdDate: fields.created,
-      resolvedDate: fields.resolutiondate || null,
-      producto,
-      tribu: tribuSquad.tribu,
-      squad: tribuSquad.squad,
-      plataforma,
+      createdDate: fields.created, resolvedDate: fields.resolutiondate || null,
+      producto, tribu: tribuSquad.tribu, squad: tribuSquad.squad, plataforma,
       jiraUrl: `${JIRA_BASE_URL}/browse/${issue.key}`,
     };
   }
 
-  // CASO 2: Tribu/Squad vacía → usar keywords como fallback
-  const producto = identificarProducto(texto);
+  // CASO 2: Tribu/Squad vacía → fallback por keywords en TODOS los campos
+  const textoCompleto = `${summary} ${description}`.toLowerCase();
+  const producto = identificarProductoGeneral(textoCompleto);
   if (producto) {
     const tribuSquad = derivarTribuSquad(producto);
     const plataforma = determinarPlataforma(summary);
@@ -177,6 +146,91 @@ function clasificar(issue) {
   }
 
   // CASO 3: No se puede clasificar → excluir
+  return null;
+}
+
+/**
+ * Determina el producto DENTRO de una tribu específica.
+ * Solo busca keywords relevantes para esa tribu.
+ */
+function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description) {
+  const texto = `${summary} ${description}`.toLowerCase();
+
+  // Primero usar squad de Jira si está disponible
+  if (squadJira) {
+    const sq = squadJira.toLowerCase();
+    if (sq.includes('movilidad')) {
+      if (texto.includes('soat')) return 'SOAT';
+      return 'Autos';
+    }
+    if (sq.includes('hogar')) return 'Hogar';
+    if (sq.includes('copropiedades')) {
+      if (texto.includes('obra al día') || texto.includes('obra al dia')) return 'Obra al día';
+      if (texto.includes('zonas comunes')) return 'Zonas comunes';
+      return 'Cuotas al día';
+    }
+    if (sq.includes('pymes')) return 'Pymes';
+    if (sq.includes('cumplimiento')) return 'Cumplimiento';
+    if (sq.includes('agro')) {
+      if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
+      return 'Agro';
+    }
+    if (sq.includes('decenal') || sq.includes('maquinaria')) {
+      if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152')) return 'Maquinaria';
+      return 'Decenal';
+    }
+    if (sq.includes('arrendamiento')) return 'Arrendamiento';
+  }
+
+  // Si no hay squad, usar keywords DENTRO del contexto de la tribu
+  if (tribu === 'Movilidad') {
+    if (texto.includes('soat')) return 'SOAT';
+    return 'Autos'; // Default para Movilidad
+  }
+  if (tribu === 'Arrendamiento') return 'Arrendamiento';
+  if (tribu === 'Vivienda') {
+    if (texto.includes('hogar')) return 'Hogar';
+    if (texto.includes('obra al día') || texto.includes('obra al dia')) return 'Obra al día';
+    if (texto.includes('zonas comunes')) return 'Zonas comunes';
+    if (texto.includes('decenal')) return 'Decenal';
+    if (texto.includes('maquinaria') || texto.includes('prod 152')) return 'Maquinaria';
+    return 'Cuotas al día'; // Default para Vivienda
+  }
+  if (tribu === 'Empresas') {
+    if (texto.includes('cumplimiento')) return 'Cumplimiento';
+    if (texto.includes('pymes') || texto.includes('pyme')) return 'Pymes';
+    if (texto.includes('agro') || texto.includes('agrícola')) return 'Agro';
+    if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
+    if (texto.includes('decenal')) return 'Decenal';
+    if (texto.includes('maquinaria') || texto.includes('prod 152')) return 'Maquinaria';
+    return 'Pymes'; // Default para Empresas
+  }
+
+  return PRODUCTO_DEFAULT[tribuJira] || 'Autos';
+}
+
+/**
+ * Fallback: identifica producto por keywords cuando NO hay tribu de Jira.
+ * Más estricto - solo clasifica si hay alta confianza.
+ */
+function identificarProductoGeneral(texto) {
+  // Keywords específicos (alta confianza)
+  if (texto.includes('cotizadores autos') || texto.includes('cotizador autos')) return 'Autos';
+  if (texto.includes('simon - soat') || texto.includes('simon-soat') || texto.includes('soat falabella') || texto.includes('ventasoatdigital')) return 'SOAT';
+  if (texto.includes('cotizadores hogar') || texto.includes('cotizador hogar')) return 'Hogar';
+  if (texto.includes('simon - cumplimiento') || texto.includes('simon-cumplimiento')) return 'Cumplimiento';
+  if (texto.includes('cotizadores pymes') || texto.includes('pymes + digital') || texto.includes('tranquilidad pymes')) return 'Pymes';
+  if (texto.includes('cotizadores agro') || texto.includes('planificador agrícola') || texto.includes('planificador agricola')) return 'Agro';
+  if (texto.includes('jelpit conjuntos cuotas') || texto.includes('jelpit conjuntos recaudo')) return 'Cuotas al día';
+  if (texto.includes('jelpit pymes')) return 'Pymes';
+  if (texto.includes('obra al día') || texto.includes('obra al dia')) return 'Obra al día';
+  if (texto.includes('ventadigitalautos')) return 'Autos';
+  if (texto.includes('tronador banca + movilidad') || texto.includes('tronador banca +movilidad')) return 'Autos';
+  if (texto.includes('sai web') || texto.includes('sai ')) return 'Arrendamiento';
+  if (texto.includes('sios')) return 'Arrendamiento';
+  if (texto.includes('recaudo electrónico soat') || texto.includes('recaudo electronico soat')) return 'SOAT';
+
+  // No se puede determinar con confianza
   return null;
 }
 
