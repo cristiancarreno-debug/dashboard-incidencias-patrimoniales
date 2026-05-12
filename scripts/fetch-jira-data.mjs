@@ -138,6 +138,24 @@ function clasificar(issue) {
 
   // CASO 2: Tribu/Squad vacía → fallback por keywords en TODOS los campos
   const textoCompleto = `${summary} ${description}`.toLowerCase();
+
+  // Para 2024: usar keywords de confianza media (más amplio)
+  if (anioCreacion <= 2024) {
+    const producto = identificarProductoConfianzaMedia(textoCompleto);
+    if (producto) {
+      const tribuSquad = derivarTribuSquad(producto);
+      const plataforma = determinarPlataforma(summary);
+      return {
+        key: issue.key, summary, status,
+        assignee: fields.assignee?.displayName || null,
+        createdDate: fields.created, resolvedDate: fields.resolutiondate || null,
+        producto, tribu: tribuSquad.tribu, squad: tribuSquad.squad, plataforma,
+        jiraUrl: `${JIRA_BASE_URL}/browse/${issue.key}`,
+      };
+    }
+  }
+
+  // Para 2025+: usar keywords de alta confianza (más estricto)
   const producto = identificarProductoGeneral(textoCompleto);
   if (producto) {
     const tribuSquad = derivarTribuSquad(producto);
@@ -213,6 +231,27 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
   }
 
   return PRODUCTO_DEFAULT[tribuJira] || 'Autos';
+}
+
+/**
+ * Fallback confianza MEDIA: para 2024 donde la tribu generalmente está vacía.
+ * Usa keywords más amplios que el fallback estricto.
+ */
+function identificarProductoConfianzaMedia(texto) {
+  if (texto.includes('soat') || texto.includes('recaudo electr')) return 'SOAT';
+  if (texto.includes('autos') || texto.includes('auto ') || texto.includes('cotizadores autos') || texto.includes('cotizador autos') || texto.includes('tronador banca') || texto.includes('banca + movilidad') || texto.includes('ventadigitalautos')) return 'Autos';
+  if (texto.includes('hogar') || texto.includes('cotizadores hogar')) return 'Hogar';
+  if (texto.includes('cumplimiento') || texto.includes('simon - cumplimiento')) return 'Cumplimiento';
+  if (texto.includes('pymes') || texto.includes('pyme') || texto.includes('jelpit pymes')) return 'Pymes';
+  if (texto.includes('agro') || texto.includes('agrícola') || texto.includes('agricola') || texto.includes('planificador agr')) return 'Agro';
+  if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
+  if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152')) return 'Maquinaria';
+  if (texto.includes('decenal')) return 'Decenal';
+  if (texto.includes('zonas comunes') || texto.includes('copropiedades')) return 'Zonas comunes';
+  if (texto.includes('obra al día') || texto.includes('obra al dia')) return 'Obra al día';
+  if (texto.includes('cuotas al día') || texto.includes('cuotas al dia') || texto.includes('jelpit conjuntos') || texto.includes('construplan') || texto.includes('constructor')) return 'Cuotas al día';
+  if (texto.includes('arrendamiento') || texto.includes('sai web') || texto.includes('sai ') || texto.includes('libertador') || texto.includes('sios')) return 'Arrendamiento';
+  return null;
 }
 
 /**
