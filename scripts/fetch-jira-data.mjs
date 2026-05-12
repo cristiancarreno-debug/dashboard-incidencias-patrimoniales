@@ -128,6 +128,10 @@ function clasificar(issue) {
   const status = fields.status?.name || '';
   if (status.toLowerCase() === 'cancelado' || status.toLowerCase() === 'cancelada') return null;
 
+  // Si Tribu/Squad de Jira está llena pero NO es válida → excluir
+  const TRIBUS_EXCLUIDAS = ['ARL', 'COREX', 'Servicio', 'Operaciones y Canales', 'Operaciones', 'Canales', 'Servicio, Operaciones y Canales', 'Areas Corporativas', 'Bancaseguros y Negocios Digitales', 'Bancaseguros', 'Negocios Digitales', 'Vida', 'Salud', 'Personas'];
+  if (tribuJira && !TRIBUS_JIRA_VALIDAS.has(tribuJira)) return null;
+
   // CASO 1: Tribu/Squad de Jira está llena y es válida → SIEMPRE incluir
   if (tribuJira && TRIBUS_JIRA_VALIDAS.has(tribuJira)) {
     const tribu = TRIBU_MAP[tribuJira] || tribuJira;
