@@ -109,10 +109,11 @@ function clasificar(issue) {
   const status = fields.status?.name || '';
   if (status.toLowerCase() === 'cancelado' || status.toLowerCase() === 'cancelada') return null;
 
-  // Filtrar por Grupo Asignación: solo incluir valores válidos
+  // Filtrar por Grupo Asignación: solo para 2026, incluir valores válidos
   const GRUPOS_VALIDOS = new Set(['Tribu de Desarrollo', 'Especialistas N1', 'Analítica', 'Mesa Soporte Tecnológico Validaciones']);
   const grupoAsignacion = fields.customfield_10439?.value || null;
-  if (grupoAsignacion && !GRUPOS_VALIDOS.has(grupoAsignacion)) return null;
+  const anioCreacion = fields.created ? new Date(fields.created).getFullYear() : 2024;
+  if (anioCreacion >= 2026 && grupoAsignacion && !GRUPOS_VALIDOS.has(grupoAsignacion)) return null;
 
   // Si Tribu/Squad de Jira está llena pero NO es válida → excluir
   if (tribuJira && !TRIBUS_JIRA_VALIDAS.has(tribuJira)) return null;
