@@ -143,7 +143,8 @@ function clasificar(issue) {
     if (preTaggedProducts.has(issue.key)) {
       producto = preTaggedProducts.get(issue.key);
       // Refinar dentro del producto pre-etiquetado (ej: Cuotas al día → Obra al día)
-      const texto = `${summary} ${description}`.toLowerCase();
+      const itemConfig = fields.customfield_10409?.child?.value || fields.customfield_10409?.value || '';
+      const texto = `${summary} ${description} ${itemConfig}`.toLowerCase();
       if (producto === 'Cuotas al día') {
         if (texto.includes('obra al día') || texto.includes('obra al dia')) producto = 'Obra al día';
         else if (texto.includes('zonas comunes')) producto = 'Zonas comunes';
