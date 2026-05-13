@@ -138,9 +138,28 @@ function clasificar(issue) {
   if (tribuJira && TRIBUS_JIRA_VALIDAS.has(tribuJira)) {
     const tribu = TRIBU_MAP[tribuJira] || tribuJira;
 
-    // Determinar producto DENTRO de la tribu (keywords + ítem configuración)
-    const itemConfig = fields.customfield_10409?.child?.value || fields.customfield_10409?.value || '';
-    const producto = determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description, itemConfig);
+    // PRIORIDAD: Si fue pre-etiquetado por query de squad hijo, usar ese producto
+    let producto;
+    if (preTaggedProducts.has(issue.key)) {
+      producto = preTaggedProducts.get(issue.key);
+      // Refinar dentro del producto pre-etiquetado (ej: Cuotas al día → Obra al día)
+      const texto = `${summary} ${description}`.toLowerCase();
+      if (producto === 'Cuotas al día') {
+        if (texto.includes('obra al día') || texto.includes('obra al dia')) producto = 'Obra al día';
+        else if (texto.includes('zonas comunes')) producto = 'Zonas comunes';
+      } else if (producto === 'Agro') {
+        if (texto.includes('transporte') || texto.includes('prod 40')) producto = 'Transporte';
+      } else if (producto === 'Decenal') {
+        if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152')) producto = 'Maquinaria';
+      } else if (producto === 'Autos') {
+        if (texto.includes('soat')) producto = 'SOAT';
+      }
+    } else {
+      // Fallback: determinar producto por keywords dentro de la tribu
+      const itemConfig = fields.customfield_10409?.child?.value || fields.customfield_10409?.value || '';
+      producto = determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description, itemConfig);
+    }
+
     const tribuSquad = derivarTribuSquad(producto);
     const plataforma = determinarPlataforma(summary);
 
@@ -338,29 +357,76 @@ async function fetchWithJQL(jql) {
   return allIssues;
 }
 
+/**
+ * Queries por squad hijo específico.
+ * La API de Jira NO devuelve el child value del campo cascading en la respuesta,
+ * pero SÍ permite filtrar por cascadeOption("padre", "hijo") en JQL.
+ * Hacemos queries separadas por cada squad hijo y pre-etiquetamos el producto correcto.
+ */
+const SQUAD_QUERIES = [
+  // Empresas → hijos
+  { parent: 'Empresas', child: 'Cumplimiento', producto: 'Cumplimiento' },
+  { parent: 'Empresas', child: 'Pymes', producto: 'Pymes' },
+  { parent: 'Empresas', child: 'Agro y Transporte', producto: 'Agro' },
+  // Vivienda → hijos
+  { parent: 'Vivienda', child: 'Copropiedades', producto: 'Cuotas al día' },
+  { parent: 'Vivienda', child: 'Hogar', producto: 'Hogar' },
+  { parent: 'Vivienda', child: 'Decenal y Maquinaria', producto: 'Decenal' },
+  // Movilidad → hijos
+  { parent: 'Movilidad', child: 'Movilidad', producto: 'Autos' },
+  // Arrendamiento → hijos
+  { parent: 'Arrendamiento', child: 'Arrendamiento', producto: 'Arrendamiento' },
+];
+
+/** Map de issue key → producto pre-etiquetado por query de squad hijo */
+const preTaggedProducts = new Map();
+
 async function fetchAllIncidencias() {
   const baseFilter = `project = MDSB AND issuetype = Incident AND status != "Cancelado"`;
   const seenKeys = new Set();
   let allIssues = [];
 
-  // Traer por campo Tribu/Squad (fuente principal)
+  // FASE 1: Queries por squad hijo específico (pre-etiquetado preciso)
+  console.log('Fase 1: Consultando por Squad hijo específico...');
+  for (const sq of SQUAD_QUERIES) {
+    const jql = `${baseFilter} AND cf[27826] in cascadeOption("${sq.parent}", "${sq.child}") AND created >= "2024-01-01" ORDER BY created DESC`;
+    try {
+      const issues = await fetchWithJQL(jql);
+      for (const issue of issues) {
+        if (!seenKeys.has(issue.key)) {
+          seenKeys.add(issue.key);
+          allIssues.push(issue);
+        }
+        // Pre-etiquetar con el producto correcto del squad hijo
+        preTaggedProducts.set(issue.key, sq.producto);
+      }
+      console.log(`  ${sq.parent} → ${sq.child}: ${issues.length} issues (producto: ${sq.producto})`);
+    } catch (err) {
+      console.warn(`  ⚠️ ${sq.parent}/${sq.child}: ${err.message.slice(0, 80)}`);
+    }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  console.log(`  Subtotal Fase 1 (squad hijo): ${allIssues.length}`);
+
+  // FASE 2: Queries por tribu padre (captura issues que no tienen hijo definido)
+  console.log('Fase 2: Consultando por Tribu padre (complemento)...');
   const tribuQueries = [
     'Movilidad', 'Vivienda', 'Empresas', 'Arrendamiento',
     'Copropiedades', 'Hogar', 'Pymes', 'Cumplimiento',
     'Agro y Transporte', 'Decenal y Maquinaria',
   ];
 
-  console.log('Consultando por Tribu/Squad...');
   for (let i = 0; i < tribuQueries.length; i += 2) {
     const batch = tribuQueries.slice(i, i + 2);
     const conditions = batch.map(t => `cf[27826] in cascadeOption("${t}")`).join(' OR ');
     const jql = `${baseFilter} AND (${conditions}) AND created >= "2024-01-01" ORDER BY created DESC`;
     try {
       const issues = await fetchWithJQL(jql);
+      let newCount = 0;
       for (const issue of issues) {
-        if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); }
+        if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); newCount++; }
       }
-      console.log(`  ${batch.join(', ')}: total acumulado ${allIssues.length}`);
+      if (newCount > 0) console.log(`  ${batch.join(', ')}: +${newCount} nuevas`);
     } catch (err) {
       console.warn(`  ⚠️ ${err.message.slice(0, 100)}`);
       for (const t of batch) {
@@ -372,10 +438,10 @@ async function fetchAllIncidencias() {
     }
     await new Promise(r => setTimeout(r, 300));
   }
-  console.log(`  Subtotal Tribu/Squad: ${allIssues.length}`);
+  console.log(`  Subtotal Fase 1+2: ${allIssues.length}`);
 
-  // Complementar con categoría/ítem (para incidencias sin Tribu/Squad)
-  console.log('Complementando con Categoría/Ítem...');
+  // FASE 3: Complementar con categoría/ítem (para incidencias sin Tribu/Squad)
+  console.log('Fase 3: Complementando con Categoría/Ítem...');
   const catJQL = `${baseFilter} AND cf[10409] in cascadeOption("Aplicaciones Fuerza Ventas") AND created >= "2024-01-01" ORDER BY created DESC`;
   try {
     const issues = await fetchWithJQL(catJQL);
@@ -396,7 +462,8 @@ async function fetchAllIncidencias() {
     await new Promise(r => setTimeout(r, 200));
   }
 
-  console.log(`\nTotal: ${allIssues.length} incidencias.`);
+  console.log(`\nTotal: ${allIssues.length} incidencias extraídas.`);
+  console.log(`Pre-etiquetadas por squad hijo: ${preTaggedProducts.size}`);
   return allIssues;
 }
 
