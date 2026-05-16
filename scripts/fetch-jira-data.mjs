@@ -58,6 +58,7 @@ function derivarTribuSquad(producto) {
     'Pymes': { tribu: 'Empresas', squad: 'Pymes' },
     'Cumplimiento': { tribu: 'Empresas', squad: 'Cumplimiento' },
     'Equipo Electrónico': { tribu: 'Empresas', squad: 'Empresas' },
+    'All Risk': { tribu: 'Empresas', squad: 'Empresas' },
     'Sin identificar': { tribu: 'Sin identificar', squad: 'Sin identificar' },
     'Agro': { tribu: 'Empresas', squad: 'Agro y Transporte' },
     'Transporte': { tribu: 'Empresas', squad: 'Agro y Transporte' },
@@ -223,6 +224,9 @@ function clasificar(issue) {
 function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description, itemConfig) {
   const texto = `${summary} ${description} ${itemConfig}`.toLowerCase();
 
+  // Detectar producto Vida en cualquier tribu (será excluido después)
+  if (texto.includes('protección de crédito') || texto.includes('proteccion de credito') || texto.includes('protección de credito') || texto.includes('proteccion de crédito') || texto.includes('vida deudor') || texto.includes('vida deudores')) return 'Vida';
+
   // Primero usar squad de Jira si está disponible
   if (squadJira) {
     const sq = squadJira.toLowerCase();
@@ -245,8 +249,8 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
       return 'Sin identificar';
     }
     if (sq.includes('decenal') || sq.includes('maquinaria')) {
-      if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152')) return 'Maquinaria';
-      if (texto.includes('decenal')) return 'Decenal';
+      if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152') || texto.includes('multiriesgo')) return 'Maquinaria';
+      if (texto.includes('decenal') || texto.includes('anticipo') || texto.includes('seccion ii') || texto.includes('sección ii') || texto.includes('todo riesgo construc')) return 'Decenal';
       return 'Sin identificar';
     }
     if (sq.includes('arrendamiento')) return 'Arrendamiento';
@@ -263,18 +267,21 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
     if (texto.includes('obra al día') || texto.includes('obra al dia')) return 'Obra al día';
     if (texto.includes('zonas comunes')) return 'Zonas comunes';
     if (texto.includes('cuotas al día') || texto.includes('cuotas al dia') || texto.includes('construplan') || texto.includes('constructor')) return 'Cuotas al día';
-    if (texto.includes('decenal')) return 'Decenal';
-    if (texto.includes('maquinaria') || texto.includes('prod 152')) return 'Maquinaria';
+    if (texto.includes('decenal') || texto.includes('anticipo') || texto.includes('seccion ii') || texto.includes('sección ii') || texto.includes('todo riesgo construc')) return 'Decenal';
+    if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('multiriesgo')) return 'Maquinaria';
     return 'Sin identificar'; // No se puede determinar producto exacto
   }
   if (tribu === 'Empresas') {
+    // Excluir producto Vida (no es de patrimoniales)
+    if (texto.includes('protección de crédito') || texto.includes('proteccion de credito') || texto.includes('protección de credito') || texto.includes('proteccion de crédito') || texto.includes('vida deudor') || texto.includes('vida deudores')) return 'Vida';
     if (texto.includes('equipo electr') || texto.includes('equipo electrónico') || texto.includes('prod 200') || texto.includes('producto 200')) return 'Equipo Electrónico';
+    if (texto.includes('all risk') || texto.includes('allrisk') || texto.includes('prod 76') || texto.includes('producto 76') || texto.includes('generales')) return 'All Risk';
     if (texto.includes('cumplimiento')) return 'Cumplimiento';
     if (texto.includes('pymes') || texto.includes('pyme')) return 'Pymes';
     if (texto.includes('agro') || texto.includes('agrícola') || texto.includes('agricola') || texto.includes('planificador')) return 'Agro';
     if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
-    if (texto.includes('decenal')) return 'Decenal';
-    if (texto.includes('maquinaria') || texto.includes('prod 152')) return 'Maquinaria';
+    if (texto.includes('decenal') || texto.includes('anticipo') || texto.includes('seccion ii') || texto.includes('sección ii') || texto.includes('todo riesgo construc')) return 'Decenal';
+    if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('multiriesgo')) return 'Maquinaria';
     return 'Sin identificar'; // No se puede determinar producto exacto
   }
 
@@ -286,7 +293,10 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
  * Usa keywords más amplios que el fallback estricto.
  */
 function identificarProductoConfianzaMedia(texto) {
+  // Excluir producto Vida (no es de patrimoniales)
+  if (texto.includes('protección de crédito') || texto.includes('proteccion de credito') || texto.includes('protección de credito') || texto.includes('proteccion de crédito') || texto.includes('vida deudor') || texto.includes('vida deudores')) return 'Vida';
   if (texto.includes('equipo electr') || texto.includes('equipo electrónico') || texto.includes('equipo electronico') || texto.includes('prod 200') || texto.includes('producto 200')) return 'Equipo Electrónico';
+  if (texto.includes('all risk') || texto.includes('allrisk') || texto.includes('prod 76') || texto.includes('producto 76')) return 'All Risk';
   if (texto.includes('soat') || texto.includes('recaudo electr')) return 'SOAT';
   if (texto.includes('autos') || texto.includes('auto ') || texto.includes('cotizadores autos') || texto.includes('cotizador autos') || texto.includes('tronador banca') || texto.includes('banca + movilidad') || texto.includes('ventadigitalautos')) return 'Autos';
   if (texto.includes('hogar') || texto.includes('cotizadores hogar')) return 'Hogar';
@@ -294,8 +304,8 @@ function identificarProductoConfianzaMedia(texto) {
   if (texto.includes('pymes') || texto.includes('pyme') || texto.includes('jelpit pymes')) return 'Pymes';
   if (texto.includes('agro') || texto.includes('agrícola') || texto.includes('agricola') || texto.includes('planificador agr')) return 'Agro';
   if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
-  if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152')) return 'Maquinaria';
-  if (texto.includes('decenal')) return 'Decenal';
+  if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152') || texto.includes('multiriesgo')) return 'Maquinaria';
+  if (texto.includes('decenal') || texto.includes('anticipo') || texto.includes('seccion ii') || texto.includes('sección ii') || texto.includes('todo riesgo construc')) return 'Decenal';
   if (texto.includes('zonas comunes') || texto.includes('copropiedades')) return 'Zonas comunes';
   if (texto.includes('obra al día') || texto.includes('obra al dia')) return 'Obra al día';
   if (texto.includes('cuotas al día') || texto.includes('cuotas al dia') || texto.includes('jelpit conjuntos') || texto.includes('construplan') || texto.includes('constructor')) return 'Cuotas al día';
@@ -308,7 +318,10 @@ function identificarProductoConfianzaMedia(texto) {
  * Más estricto - solo clasifica si hay alta confianza.
  */
 function identificarProductoGeneral(texto) {
+  // Excluir producto Vida (no es de patrimoniales)
+  if (texto.includes('protección de crédito') || texto.includes('proteccion de credito') || texto.includes('protección de credito') || texto.includes('proteccion de crédito') || texto.includes('vida deudor') || texto.includes('vida deudores')) return 'Vida';
   // Keywords específicos (alta confianza)
+  if (texto.includes('all risk') || texto.includes('allrisk') || texto.includes('prod 76') || texto.includes('producto 76')) return 'All Risk';
   if (texto.includes('cotizadores autos') || texto.includes('cotizador autos')) return 'Autos';
   if (texto.includes('simon - soat') || texto.includes('simon-soat') || texto.includes('soat falabella') || texto.includes('ventasoatdigital')) return 'SOAT';
   if (texto.includes('cotizadores hogar') || texto.includes('cotizador hogar')) return 'Hogar';
@@ -484,6 +497,8 @@ async function main() {
   try {
     const rawIssues = await fetchAllIncidencias();
     const incidencias = rawIssues.map(clasificar).filter(Boolean).filter(inc => {
+      // Excluir producto Vida (no es de patrimoniales)
+      if (inc.producto === 'Vida') return false;
       // Excluir Jelpit Conjuntos
       if (inc.plataforma === 'Jelpit Conjuntos') return false;
       // SAI solo para Arrendamiento
