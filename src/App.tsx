@@ -13,6 +13,48 @@ import { IncidenciasTable } from './components/IncidenciasTable';
 import { PlatformMonthlyChart } from './components/PlatformMonthlyChart';
 import type { IncidenciaClasificada } from './types';
 
+/** Calcula la próxima actualización programada (8AM, 12PM, 4PM Colombia, L-V) */
+function getNextUpdate(): string {
+  const now = new Date();
+  // Convertir a hora Colombia (UTC-5)
+  const colombiaOffset = -5 * 60;
+  const localOffset = now.getTimezoneOffset();
+  const colombiaTime = new Date(now.getTime() + (localOffset + colombiaOffset) * 60000);
+
+  const hours = [8, 12, 16]; // Horas de actualización
+  const currentHour = colombiaTime.getHours();
+  const currentMin = colombiaTime.getMinutes();
+  const dayOfWeek = colombiaTime.getDay(); // 0=Dom, 6=Sab
+
+  // Buscar la próxima hora de actualización
+  let nextDate = new Date(colombiaTime);
+  let found = false;
+
+  // Si es día laboral (L-V), buscar la próxima hora hoy
+  if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+    for (const h of hours) {
+      if (h > currentHour || (h === currentHour && currentMin < 5)) {
+        nextDate.setHours(h, 0, 0, 0);
+        found = true;
+        break;
+      }
+    }
+  }
+
+  // Si no se encontró hoy, buscar el próximo día laboral
+  if (!found) {
+    nextDate.setHours(8, 0, 0, 0);
+    do {
+      nextDate.setDate(nextDate.getDate() + 1);
+    } while (nextDate.getDay() === 0 || nextDate.getDay() === 6);
+  }
+
+  return nextDate.toLocaleString('es-CO', {
+    weekday: 'short', day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  });
+}
+
 function App() {
   const [allIncidencias, setAllIncidencias] = useState<IncidenciaClasificada[]>([]);
   const [lastUpdated, setLastUpdated] = useState('Cargando...');
@@ -79,6 +121,7 @@ function App() {
           <div className="text-right">
             <p className="text-xs text-slate-400">Última actualización</p>
             <p className="text-sm font-medium text-slate-600">{lastUpdated}</p>
+            <p className="text-xs text-slate-400 mt-1">Próxima: {getNextUpdate()}</p>
             <button
               onClick={() => {
                 if (confirm('¿Deseas actualizar los datos desde Jira? Esto puede tardar unos minutos.')) {
