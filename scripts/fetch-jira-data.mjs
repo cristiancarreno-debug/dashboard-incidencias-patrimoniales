@@ -472,25 +472,62 @@ async function fetchAllIncidencias() {
   }
   console.log(`  Subtotal Fase 1+2: ${allIssues.length}`);
 
-  // FASE 3: Complementar con categoría/ítem (para incidencias sin Tribu/Squad)
+  // FASE 3: Complementar con categoría/ítem (ampliada)
   console.log('Fase 3: Complementando con Categoría/Ítem...');
-  const catJQL = `${baseFilter} AND cf[10409] in cascadeOption("Aplicaciones Fuerza Ventas") AND created >= "2024-01-01" ORDER BY created DESC`;
-  try {
-    const issues = await fetchWithJQL(catJQL);
-    let n = 0;
-    for (const issue of issues) { if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); n++; } }
-    console.log(`  Aplicaciones Fuerza Ventas: +${n} nuevas`);
-  } catch (err) { console.error(`  ❌ ${err.message.slice(0, 100)}`); }
-
-  const items = ['SAI', 'SAI WEB', 'SIOS', 'TRONADOR BANCA + MOVILIDAD', 'TRONADOR CIA 3 EXCEPTO AUTOS Y SOAT', 'Tronador Contingencia', 'Planificador Agrícola', 'Obra al día', 'Constructor', 'VentaDigitalAutos - IBM', 'VentaSoatDigital - IBM'];
-  for (let i = 0; i < items.length; i += 3) {
-    const batch = items.slice(i, i + 3).map(it => `cf[10409] in cascadeOption("Aplicaciones Empresariales", "${it}")`);
+  const catQueries = [
+    // Aplicaciones Fuerza Ventas (completa)
+    `${baseFilter} AND cf[10409] in cascadeOption("Aplicaciones Fuerza Ventas") AND created >= "2024-01-01" ORDER BY created DESC`,
+    // Aplicaciones Empresariales (completa - antes solo traíamos ítems específicos)
+    `${baseFilter} AND cf[10409] in cascadeOption("Aplicaciones Empresariales") AND created >= "2024-01-01" ORDER BY created DESC`,
+  ];
+  for (const jql of catQueries) {
     try {
-      const issues = await fetchWithJQL(`${baseFilter} AND (${batch.join(' OR ')}) AND created >= "2024-01-01" ORDER BY created DESC`);
+      const issues = await fetchWithJQL(jql);
       let n = 0;
       for (const issue of issues) { if (!seenKeys.has(issue.key)) { seenKeys.add(issue.key); allIssues.push(issue); n++; } }
-      if (n > 0) console.log(`  +${n} de Empresariales`);
-    } catch (e) { /* ignore */ }
+      if (n > 0) console.log(`  +${n} nuevas de Categoría/Ítem`);
+    } catch (err) { console.error(`  ❌ ${err.message.slice(0, 100)}`); }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  console.log(`  Subtotal Fase 1+2+3: ${allIssues.length}`);
+
+  // FASE 4: Queries por keywords en summary (captura tickets con tribu vacía)
+  console.log('Fase 4: Buscando por keywords en summary (tribu vacía)...');
+  const keywordQueries = [
+    { keyword: 'cumplimiento', producto: 'Cumplimiento' },
+    { keyword: 'cuotas al día', producto: 'Cuotas al día' },
+    { keyword: 'cuotas al dia', producto: 'Cuotas al día' },
+    { keyword: 'obra al día', producto: 'Obra al día' },
+    { keyword: 'obra al dia', producto: 'Obra al día' },
+    { keyword: 'pymes', producto: 'Pymes' },
+    { keyword: 'agro', producto: 'Agro' },
+    { keyword: 'decenal', producto: 'Decenal' },
+    { keyword: 'maquinaria', producto: 'Maquinaria' },
+    { keyword: 'arrendamiento', producto: 'Arrendamiento' },
+    { keyword: 'hogar', producto: 'Hogar' },
+    { keyword: 'SOAT', producto: 'SOAT' },
+    { keyword: 'construplan', producto: 'Cuotas al día' },
+    { keyword: 'constructor', producto: 'Cuotas al día' },
+    { keyword: 'zonas comunes', producto: 'Zonas comunes' },
+    { keyword: 'all risk', producto: 'All Risk' },
+    { keyword: 'equipo electrónico', producto: 'Equipo Electrónico' },
+    { keyword: 'multiriesgo', producto: 'Maquinaria' },
+    { keyword: 'anticipo', producto: 'Decenal' },
+  ];
+  for (const kw of keywordQueries) {
+    const jql = `${baseFilter} AND summary ~ "${kw.keyword}" AND created >= "2024-01-01" ORDER BY created DESC`;
+    try {
+      const issues = await fetchWithJQL(jql);
+      let n = 0;
+      for (const issue of issues) {
+        if (!seenKeys.has(issue.key)) {
+          seenKeys.add(issue.key);
+          allIssues.push(issue);
+          n++;
+        }
+      }
+      if (n > 0) console.log(`  "${kw.keyword}": +${n} nuevas`);
+    } catch (err) { /* ignore */ }
     await new Promise(r => setTimeout(r, 200));
   }
 
