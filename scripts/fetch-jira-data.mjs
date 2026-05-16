@@ -275,7 +275,7 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
     // Excluir producto Vida (no es de patrimoniales)
     if (texto.includes('protección de crédito') || texto.includes('proteccion de credito') || texto.includes('protección de credito') || texto.includes('proteccion de crédito') || texto.includes('vida deudor') || texto.includes('vida deudores')) return 'Vida';
     if (texto.includes('equipo electr') || texto.includes('equipo electrónico') || texto.includes('prod 200') || texto.includes('producto 200')) return 'Equipo Electrónico';
-    if (texto.includes('all risk') || texto.includes('allrisk') || texto.includes('prod 76') || texto.includes('producto 76') || texto.includes('generales')) return 'All Risk';
+    if (texto.includes('all risk') || texto.includes('allrisk') || texto.includes('prod 76') || texto.includes('producto 76')) return 'All Risk';
     if (texto.includes('cumplimiento')) return 'Cumplimiento';
     if (texto.includes('pymes') || texto.includes('pyme')) return 'Pymes';
     if (texto.includes('agro') || texto.includes('agrícola') || texto.includes('agricola') || texto.includes('planificador')) return 'Agro';
