@@ -162,7 +162,7 @@ function clasificar(issue) {
       } else if (producto === 'Agro') {
         if (texto.includes('transporte') || texto.includes('prod 40')) producto = 'Transporte';
       } else if (producto === 'Decenal') {
-        if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152')) producto = 'Maquinaria';
+        if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto:152') || texto.includes('producto 152')) producto = 'Maquinaria';
       } else if (producto === 'Autos') {
         if (texto.includes('soat')) producto = 'SOAT';
       }
@@ -257,7 +257,7 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
       return 'Sin identificar';
     }
     if (sq.includes('decenal') || sq.includes('maquinaria')) {
-      if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152') || texto.includes('multiriesgo')) return 'Maquinaria';
+      if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto:152') || texto.includes('producto 152') || texto.includes('multiriesgo')) return 'Maquinaria';
       if (texto.includes('decenal') || texto.includes('anticipo') || texto.includes('seccion ii') || texto.includes('sección ii') || texto.includes('todo riesgo construc')) return 'Decenal';
       return 'Sin identificar';
     }
@@ -276,7 +276,7 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
     if (texto.includes('zonas comunes')) return 'Zonas comunes';
     if (texto.includes('cuotas al día') || texto.includes('cuotas al dia') || texto.includes('construplan') || texto.includes('constructor')) return 'Cuotas al día';
     if (texto.includes('decenal') || texto.includes('anticipo') || texto.includes('seccion ii') || texto.includes('sección ii') || texto.includes('todo riesgo construc')) return 'Decenal';
-    if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('multiriesgo')) return 'Maquinaria';
+    if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto:152') || texto.includes('multiriesgo')) return 'Maquinaria';
     return 'Sin identificar'; // No se puede determinar producto exacto
   }
   if (tribu === 'Empresas') {
@@ -289,7 +289,7 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
     if (texto.includes('agro') || texto.includes('agrícola') || texto.includes('agricola') || texto.includes('planificador')) return 'Agro';
     if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
     if (texto.includes('decenal') || texto.includes('anticipo') || texto.includes('seccion ii') || texto.includes('sección ii') || texto.includes('todo riesgo construc')) return 'Decenal';
-    if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('multiriesgo')) return 'Maquinaria';
+    if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto:152') || texto.includes('multiriesgo')) return 'Maquinaria';
     return 'Sin identificar'; // No se puede determinar producto exacto
   }
 
@@ -312,7 +312,7 @@ function identificarProductoConfianzaMedia(texto) {
   if (texto.includes('pymes') || texto.includes('pyme') || texto.includes('jelpit pymes')) return 'Pymes';
   if (texto.includes('agro') || texto.includes('agrícola') || texto.includes('agricola') || texto.includes('planificador agr')) return 'Agro';
   if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
-  if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152') || texto.includes('multiriesgo')) return 'Maquinaria';
+  if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto:152') || texto.includes('producto 152') || texto.includes('multiriesgo')) return 'Maquinaria';
   if (texto.includes('decenal') || texto.includes('anticipo') || texto.includes('seccion ii') || texto.includes('sección ii') || texto.includes('todo riesgo construc')) return 'Decenal';
   if (texto.includes('zonas comunes') || texto.includes('copropiedades')) return 'Zonas comunes';
   if (texto.includes('obra al día') || texto.includes('obra al dia')) return 'Obra al día';
