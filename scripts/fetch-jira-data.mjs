@@ -57,6 +57,7 @@ function derivarTribuSquad(producto) {
     'Maquinaria': { tribu: 'Vivienda', squad: 'Decenal y Maquinaria' },
     'Pymes': { tribu: 'Empresas', squad: 'Pymes' },
     'Cumplimiento': { tribu: 'Empresas', squad: 'Cumplimiento' },
+    'Equipo Electrónico': { tribu: 'Empresas', squad: 'Empresas' },
     'Agro': { tribu: 'Empresas', squad: 'Agro y Transporte' },
     'Transporte': { tribu: 'Empresas', squad: 'Agro y Transporte' },
     'Arrendamiento': { tribu: 'Arrendamiento', squad: 'Arrendamiento' },
@@ -260,6 +261,7 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
     return 'Cuotas al día'; // Default para Vivienda
   }
   if (tribu === 'Empresas') {
+    if (texto.includes('equipo electr') || texto.includes('equipo electrónico') || texto.includes('prod 200') || texto.includes('producto 200')) return 'Equipo Electrónico';
     if (texto.includes('cumplimiento')) return 'Cumplimiento';
     if (texto.includes('pymes') || texto.includes('pyme')) return 'Pymes';
     if (texto.includes('agro') || texto.includes('agrícola')) return 'Agro';
@@ -277,6 +279,7 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
  * Usa keywords más amplios que el fallback estricto.
  */
 function identificarProductoConfianzaMedia(texto) {
+  if (texto.includes('equipo electr') || texto.includes('equipo electrónico') || texto.includes('equipo electronico') || texto.includes('prod 200') || texto.includes('producto 200')) return 'Equipo Electrónico';
   if (texto.includes('soat') || texto.includes('recaudo electr')) return 'SOAT';
   if (texto.includes('autos') || texto.includes('auto ') || texto.includes('cotizadores autos') || texto.includes('cotizador autos') || texto.includes('tronador banca') || texto.includes('banca + movilidad') || texto.includes('ventadigitalautos')) return 'Autos';
   if (texto.includes('hogar') || texto.includes('cotizadores hogar')) return 'Hogar';
