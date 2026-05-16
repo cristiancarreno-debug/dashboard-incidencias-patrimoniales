@@ -124,6 +124,14 @@ function clasificar(issue) {
   if (typeof fields.description === 'string') description = fields.description;
   else if (fields.description && typeof fields.description === 'object') description = extractTextFromADF(fields.description);
 
+  // Extraer texto de comentarios
+  let commentText = '';
+  if (fields.comment && fields.comment.comments && Array.isArray(fields.comment.comments)) {
+    for (const c of fields.comment.comments) {
+      if (c.body) commentText += ' ' + extractTextFromADF(c.body);
+    }
+  }
+
   // Estado cancelado → excluir
   const status = fields.status?.name || '';
   if (status.toLowerCase() === 'cancelado' || status.toLowerCase() === 'cancelada') return null;
@@ -147,7 +155,7 @@ function clasificar(issue) {
       producto = preTaggedProducts.get(issue.key);
       // Refinar dentro del producto pre-etiquetado (ej: Cuotas al día → Obra al día)
       const itemConfig = fields.customfield_10409?.child?.value || fields.customfield_10409?.value || '';
-      const texto = `${summary} ${description} ${itemConfig}`.toLowerCase();
+      const texto = `${summary} ${description} ${commentText} ${itemConfig}`.toLowerCase();
       if (producto === 'Cuotas al día') {
         if (texto.includes('obra al día') || texto.includes('obra al dia')) producto = 'Obra al día';
         else if (texto.includes('zonas comunes')) producto = 'Zonas comunes';
@@ -161,7 +169,7 @@ function clasificar(issue) {
     } else {
       // Fallback: determinar producto por keywords dentro de la tribu
       const itemConfig = fields.customfield_10409?.child?.value || fields.customfield_10409?.value || '';
-      producto = determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description, itemConfig);
+      producto = determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, `${description} ${commentText}`, itemConfig);
     }
 
     const tribuSquad = producto === 'Sin identificar'
@@ -180,7 +188,7 @@ function clasificar(issue) {
   }
 
   // CASO 2: Tribu/Squad vacía → fallback por keywords en TODOS los campos
-  const textoCompleto = `${summary} ${description}`.toLowerCase();
+  const textoCompleto = `${summary} ${description} ${commentText}`.toLowerCase();
 
   // Para 2024 y 2025: usar keywords de confianza media (más amplio)
   if (anioCreacion <= 2025) {
@@ -364,7 +372,7 @@ function jiraRequest(urlPath) {
 }
 
 async function fetchWithJQL(jql) {
-  const fields = 'summary,status,assignee,created,resolutiondate,customfield_10409,customfield_27826,description,customfield_10439';
+  const fields = 'summary,status,assignee,created,resolutiondate,customfield_10409,customfield_27826,description,customfield_10439,comment';
   const maxResults = 100;
   let allIssues = [];
   let nextPageToken = null;
