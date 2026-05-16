@@ -58,6 +58,7 @@ function derivarTribuSquad(producto) {
     'Pymes': { tribu: 'Empresas', squad: 'Pymes' },
     'Cumplimiento': { tribu: 'Empresas', squad: 'Cumplimiento' },
     'Equipo Electrónico': { tribu: 'Empresas', squad: 'Empresas' },
+    'Sin identificar': { tribu: 'Sin identificar', squad: 'Sin identificar' },
     'Agro': { tribu: 'Empresas', squad: 'Agro y Transporte' },
     'Transporte': { tribu: 'Empresas', squad: 'Agro y Transporte' },
     'Arrendamiento': { tribu: 'Arrendamiento', squad: 'Arrendamiento' },
@@ -162,7 +163,9 @@ function clasificar(issue) {
       producto = determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, description, itemConfig);
     }
 
-    const tribuSquad = derivarTribuSquad(producto);
+    const tribuSquad = producto === 'Sin identificar'
+      ? { tribu, squad: squadJira || tribuJira }
+      : derivarTribuSquad(producto);
     const plataforma = determinarPlataforma(summary);
 
     return {
@@ -231,17 +234,20 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
     if (sq.includes('copropiedades')) {
       if (texto.includes('obra al día') || texto.includes('obra al dia')) return 'Obra al día';
       if (texto.includes('zonas comunes')) return 'Zonas comunes';
-      return 'Cuotas al día';
+      if (texto.includes('cuotas al día') || texto.includes('cuotas al dia') || texto.includes('construplan') || texto.includes('constructor')) return 'Cuotas al día';
+      return 'Sin identificar';
     }
     if (sq.includes('pymes')) return 'Pymes';
     if (sq.includes('cumplimiento')) return 'Cumplimiento';
     if (sq.includes('agro')) {
       if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
-      return 'Agro';
+      if (texto.includes('agro') || texto.includes('agrícola') || texto.includes('agricola') || texto.includes('planificador')) return 'Agro';
+      return 'Sin identificar';
     }
     if (sq.includes('decenal') || sq.includes('maquinaria')) {
       if (texto.includes('maquinaria') || texto.includes('prod 152') || texto.includes('producto 152')) return 'Maquinaria';
-      return 'Decenal';
+      if (texto.includes('decenal')) return 'Decenal';
+      return 'Sin identificar';
     }
     if (sq.includes('arrendamiento')) return 'Arrendamiento';
   }
@@ -256,22 +262,23 @@ function determinarProductoDentroDeTribu(tribu, tribuJira, squadJira, summary, d
     if (texto.includes('hogar')) return 'Hogar';
     if (texto.includes('obra al día') || texto.includes('obra al dia')) return 'Obra al día';
     if (texto.includes('zonas comunes')) return 'Zonas comunes';
+    if (texto.includes('cuotas al día') || texto.includes('cuotas al dia') || texto.includes('construplan') || texto.includes('constructor')) return 'Cuotas al día';
     if (texto.includes('decenal')) return 'Decenal';
     if (texto.includes('maquinaria') || texto.includes('prod 152')) return 'Maquinaria';
-    return 'Cuotas al día'; // Default para Vivienda
+    return 'Sin identificar'; // No se puede determinar producto exacto
   }
   if (tribu === 'Empresas') {
     if (texto.includes('equipo electr') || texto.includes('equipo electrónico') || texto.includes('prod 200') || texto.includes('producto 200')) return 'Equipo Electrónico';
     if (texto.includes('cumplimiento')) return 'Cumplimiento';
     if (texto.includes('pymes') || texto.includes('pyme')) return 'Pymes';
-    if (texto.includes('agro') || texto.includes('agrícola')) return 'Agro';
+    if (texto.includes('agro') || texto.includes('agrícola') || texto.includes('agricola') || texto.includes('planificador')) return 'Agro';
     if (texto.includes('transporte') || texto.includes('prod 40')) return 'Transporte';
     if (texto.includes('decenal')) return 'Decenal';
     if (texto.includes('maquinaria') || texto.includes('prod 152')) return 'Maquinaria';
-    return 'Cumplimiento'; // Default para Empresas sin squad (más común)
+    return 'Sin identificar'; // No se puede determinar producto exacto
   }
 
-  return PRODUCTO_DEFAULT[tribuJira] || 'Autos';
+  return PRODUCTO_DEFAULT[tribuJira] || 'Sin identificar';
 }
 
 /**
