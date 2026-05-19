@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { loadIncidencias } from './data/load-data';
+import { useIncidenciasQuery } from './hooks/useIncidenciasQuery';
 import { useFilters } from './hooks/useFilters';
 import { useMetrics } from './hooks/useMetrics';
 import { SummaryCounters } from './components/SummaryCounters';
@@ -11,7 +10,6 @@ import { PlatformPie } from './components/PlatformPie';
 import { ResolutionPie } from './components/ResolutionPie';
 import { IncidenciasTable } from './components/IncidenciasTable';
 import { PlatformMonthlyChart } from './components/PlatformMonthlyChart';
-import type { IncidenciaClasificada } from './types';
 
 /** Calcula la próxima actualización programada (8AM, 12PM, 4PM Colombia, L-V) */
 function getNextUpdate(): string {
@@ -56,17 +54,7 @@ function getNextUpdate(): string {
 }
 
 function App() {
-  const [allIncidencias, setAllIncidencias] = useState<IncidenciaClasificada[]>([]);
-  const [lastUpdated, setLastUpdated] = useState('Cargando...');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadIncidencias().then(({ incidencias, lastUpdated: lu }) => {
-      setAllIncidencias(incidencias);
-      setLastUpdated(new Date(lu).toLocaleString('es-CO'));
-      setLoading(false);
-    });
-  }, []);
+  const { incidencias: allIncidencias, lastUpdated, isLoading, refetch } = useIncidenciasQuery();
 
   const {
     filtros,
@@ -94,7 +82,7 @@ function App() {
     i => i.createdDate && new Date(i.createdDate).getFullYear() === 2026
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
@@ -123,11 +111,7 @@ function App() {
             <p className="text-sm font-medium text-slate-600">{lastUpdated}</p>
             <p className="text-xs text-slate-400 mt-1">Próxima: {getNextUpdate()}</p>
             <button
-              onClick={() => {
-                if (confirm('¿Deseas actualizar los datos desde Jira? Esto puede tardar unos minutos.')) {
-                  window.open('https://github.com/cristiancarreno-debug/dashboard-incidencias-patrimoniales/actions/workflows/deploy.yml', '_blank');
-                }
-              }}
+              onClick={() => { refetch(); }}
               className="mt-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             >
               Actualizar ahora
