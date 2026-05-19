@@ -84,35 +84,40 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-secondary flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Cargando datos de incidencias...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-bolivar-500 mx-auto"></div>
+          <p className="mt-4 text-content-secondary">Cargando datos de incidencias...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-surface-secondary">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm">
+      <header className="bg-white border-b border-border shadow-sm">
         <div className="w-full px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">
-              Dashboard de Incidencias Patrimoniales
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Seguimiento en tiempo real de incidencias por producto, tribu y squad
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-bolivar-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">SB</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-content-primary">
+                Reporte de Incidencias
+              </h1>
+              <p className="text-sm text-content-secondary mt-0.5">
+                Seguimiento en tiempo real por producto, tribu y squad
+              </p>
+            </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-slate-400">Última actualización</p>
-            <p className="text-sm font-medium text-slate-600">{lastUpdated}</p>
-            <p className="text-xs text-slate-400 mt-1">Próxima: {getNextUpdate()}</p>
+            <p className="text-xs text-content-tertiary">Última actualización</p>
+            <p className="text-sm font-medium text-content-secondary">{lastUpdated}</p>
+            <p className="text-xs text-content-tertiary mt-1">Próxima: {getNextUpdate()}</p>
             <button
               onClick={() => { refetch(); }}
-              className="mt-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              className="mt-1 px-3 py-1.5 text-xs bg-bolivar-500 text-white rounded-lg hover:bg-bolivar-700 transition-colors font-medium"
             >
               Actualizar ahora
             </button>
@@ -146,7 +151,7 @@ function App() {
 
         {/* Gráfico mensual */}
         <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-slate-700 mb-4">
+          <h2 className="text-lg font-semibold text-content-primary mb-4">
             Incidencias por Mes
           </h2>
           <MonthlyChart data={metrics.metricasMensuales} />
@@ -155,7 +160,7 @@ function App() {
         {/* Tabla comparativa anual + Grupo Asignación */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <section className="bg-white rounded-lg shadow p-6 lg:col-span-3">
-            <h2 className="text-lg font-semibold text-slate-700 mb-4">
+            <h2 className="text-lg font-semibold text-content-primary mb-4">
               Comparativa Anual
             </h2>
             <AnnualTable data={metrics.metricasAnuales} filtros={filtros} />
@@ -168,14 +173,14 @@ function App() {
         {/* Gráficos de plataforma */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-slate-700 mb-4">
+            <h2 className="text-lg font-semibold text-content-primary mb-4">
               Incidencias por Plataforma (Mes a Mes)
             </h2>
             <PlatformMonthlyChart incidencias={incidenciasFiltradas} />
           </section>
 
           <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-slate-700 mb-4">
+            <h2 className="text-lg font-semibold text-content-primary mb-4">
               Concentración por Plataforma
             </h2>
             <PlatformPie data={metrics.concentracionPlataforma} />
@@ -184,7 +189,7 @@ function App() {
 
         {/* Gráfico de rangos de resolución */}
         <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-slate-700 mb-4">
+          <h2 className="text-lg font-semibold text-content-primary mb-4">
             Distribución de Tiempos de Resolución
           </h2>
           <ResolutionPie data={metrics.distribucionRangos} />
@@ -192,7 +197,7 @@ function App() {
 
         {/* Tabla de incidencias abiertas */}
         <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-slate-700 mb-4">
+          <h2 className="text-lg font-semibold text-content-primary mb-4">
             Incidencias Abiertas ({incidenciasAbiertas.length})
           </h2>
           <IncidenciasTable incidencias={incidenciasAbiertas} />
@@ -200,16 +205,16 @@ function App() {
 
         {/* Tabla de incidencias 2026 */}
         <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-slate-700 mb-4">
+          <h2 className="text-lg font-semibold text-content-primary mb-4">
             Todas las Incidencias 2026 ({incidencias2026.length})
           </h2>
           <IncidenciasTable incidencias={incidencias2026} />
         </section>
       </main>
 
-      <footer className="bg-white border-t border-slate-200 mt-8 py-4">
-        <p className="text-center text-xs text-slate-400">
-          Dashboard de Incidencias Patrimoniales — Seguros Bolívar © 2026
+      <footer className="bg-white border-t border-border mt-8 py-4">
+        <p className="text-center text-xs text-content-tertiary">
+          Reporte de Incidencias — Gerencia Portafolio — Seguros Bolívar © 2026
         </p>
       </footer>
     </div>
